@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart'; // Import the SettingsPage
+import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   final String userName;
@@ -12,6 +13,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
+  String userName = 'User'; // State variable untuk menyimpan username
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName(); // Load username saat widget diinisialisasi
+  }
 
   // Fungsi untuk mendapatkan sapaan berdasarkan waktu
   String _getGreeting() {
@@ -42,7 +50,26 @@ class _HomePageState extends State<HomePage> {
       return '🌙'; // Malam
     }
   }
-  
+
+  // Fungsi untuk load username dari SharedPreferences
+  Future<void> _loadUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loadedUserName = prefs.getString('full_name') ?? 
+                            prefs.getString('username') ?? 
+                            widget.userName; // Fallback ke parameter widget
+      
+      setState(() {
+        userName = loadedUserName;
+      });
+    } catch (e) {
+      print('Error loading username: $e');
+      // Jika terjadi error, gunakan default value
+      setState(() {
+        userName = widget.userName;
+      });
+    }
+  }
 
   void _handleBottomNavTap(int index) {
     if (index == 4) {
@@ -114,7 +141,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             Text(
-              widget.userName,
+              userName, // Gunakan state variable userName
               style: TextStyle(
                 color: Colors.blue[300],
                 fontSize: 24,
@@ -468,7 +495,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: _handleBottomNavTap, // Use the new handler
+        onTap: _handleBottomNavTap,
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.transparent,
         selectedItemColor: Colors.blue,

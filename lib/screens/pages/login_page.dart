@@ -373,26 +373,10 @@ Future<void> _login() async {
 
         if (userData != null) {
           final id = userData['id'] ?? 0;
-          
-          // ✅ PERBAIKAN: Extract username dengan lebih banyak fallback options
-          // Coba berbagai kemungkinan field name untuk username
-          String username = 'User'; // default value
-          
-          // Prioritas: full_name > name > username > email prefix
-          if (userData['full_name'] != null && userData['full_name'].toString().isNotEmpty) {
-            username = userData['full_name'].toString();
-          } else if (userData['name'] != null && userData['name'].toString().isNotEmpty) {
-            username = userData['name'].toString();
-          } else if (userData['username'] != null && userData['username'].toString().isNotEmpty) {
-            username = userData['username'].toString();
-          } else if (userData['email'] != null && userData['email'].toString().isNotEmpty) {
-            // Jika tidak ada username, gunakan bagian email sebelum @
-            final email = userData['email'].toString();
-            if (email.contains('@')) {
-              username = email.split('@')[0];
-            }
-          }
-          
+
+          // ✅ Perbaikan: Ambil username langsung dari response API
+          String username = userData['username'] ?? prefs.getString('username_$id') ?? 'User';
+
           final email = userData['email'] ?? '';
           final createdAt = userData['createdAt'] ?? userData['created_at'] ?? '';
           final dateOfBirth = userData['dateOfBirth'] ?? userData['date_of_birth'] ?? '';
@@ -404,11 +388,12 @@ Future<void> _login() async {
           final profileImage = userData['profileImage'] ?? userData['profile_image'] ?? '';
 
           print('✅ Login successful for user ID: $id');
-          print('✅ Username extracted: $username'); // Debug log
+          print('✅ Username loaded: $username'); // Debug log
 
-          // Save session data
+          // ✅ Simpan data ke SharedPreferences
           await prefs.setInt('id', id);
-          await prefs.setString('full_name', username); 
+          await prefs.setString('username_$id', username); // ✅ simpan username juga
+          await prefs.setString('full_name', username);
           await prefs.setString('email', email);
           await prefs.setString('created_at', createdAt);
           await prefs.setString('dateOfBirth', dateOfBirth);
@@ -420,14 +405,13 @@ Future<void> _login() async {
           await prefs.setString('profileImage', profileImage);
           await prefs.setBool('isLoggedIn', true);
 
-          // Save auth token if available
+          // ✅ Simpan token jika tersedia
           if (response['data']['token'] != null) {
             await prefs.setString('auth_token', response['data']['token']);
           }
 
-          // ✅ Check user-specific onboarding status
+          // ✅ Cek status onboarding
           final isOnboardingCompleted = prefs.getBool('onboarding_completed_$id') ?? false;
-          
           print('🔍 User $id onboarding status: $isOnboardingCompleted');
 
           if (context.mounted) {
@@ -463,6 +447,7 @@ Future<void> _login() async {
     }
   }
 }
+
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(

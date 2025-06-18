@@ -238,11 +238,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               side: BorderSide(color: Colors.white),
               elevation: 0,
             ),
-            onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              // Navigate to home page - gunakan pushReplacementNamed untuk konsistensi dengan routing
-              Navigator.pushReplacementNamed(context, '/home');
-            },
+            onPressed: () async {
+  Navigator.of(context).pop();
+
+  final prefs = await SharedPreferences.getInstance();
+  final username = prefs.getString('full_name') ?? 'User';
+
+  Navigator.pushReplacementNamed(
+    context,
+    '/home',
+    arguments: {'userName': username},
+  );
+},
+
             child: Text('Start Using App'),
           ),
         ],

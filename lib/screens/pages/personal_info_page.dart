@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../models/user_data.dart';
-import 'package:aplikasi_counting_calories/service/personal_info_service.dart'; // Import service yang baru dibuat
+import 'package:aplikasi_counting_calories/service/personal_info_service.dart';
 
 class PersonalInfoPage extends StatefulWidget {
   final UserData userData;
   final VoidCallback onChanged;
-  final VoidCallback? onNext; // Tambahkan callback untuk next
-  final bool showNextButton; // Flag untuk menampilkan next button
+  final VoidCallback? onNext;
+  final bool showNextButton;
 
   PersonalInfoPage({
     required this.userData, 
@@ -119,6 +119,22 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     super.dispose();
   }
 
+  // Function untuk save username ke SharedPreferences
+  Future<void> _saveUsernameToPrefs(String username) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Save dengan multiple keys untuk kompatibilitas
+      await prefs.setString('full_name', username);
+      await prefs.setString('username', username);
+      await prefs.setString('first_name', username);
+      
+      print('Username saved to SharedPreferences: $username');
+    } catch (e) {
+      print('Error saving username to SharedPreferences: $e');
+    }
+  }
+
   // Function untuk save/update personal info dan next
   Future<void> _saveAndNext() async {
     setState(() {
@@ -144,17 +160,26 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
         throw Exception('Gender selection is required');
       }
 
+      final username = _firstNameController.text.trim();
+
       // Format tanggal untuk backend
       final dateOfBirth = PersonalInfoService.formatDateForBackend(day, month, year);
 
       // Update data menggunakan service
       final result = await PersonalInfoService.updatePersonalInfo(
-        username: _firstNameController.text.trim(),
+        username: username,
         dateOfBirth: dateOfBirth,
         gender: widget.userData.gender,
       );
 
       if (result['success']) {
+        // Save username ke SharedPreferences untuk homepage
+        await _saveUsernameToPrefs(username);
+
+        // Update local UserData
+        widget.userData.updateFirstName(username);
+        widget.onChanged();
+
         // Show success message dengan custom floating snackbar
         _showFloatingSnackBar(
           context,
@@ -162,9 +187,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
           isSuccess: true,
         );
 
-        // Update local UserData
-        widget.userData.updateFirstName(_firstNameController.text.trim());
-        widget.onChanged();
+        // Delay sedikit untuk memastikan SharedPreferences tersimpan
+        await Future.delayed(Duration(milliseconds: 500));
 
         // Panggil callback next jika ada
         if (widget.onNext != null) {
@@ -188,7 +212,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +253,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                             await prefs.remove('birthDay');
                             await prefs.remove('birthMonth');
                             await prefs.remove('birthYear');
+                            await prefs.remove('username');
+                            await prefs.remove('first_name');
                       
                       Navigator.of(context).pushNamedAndRemoveUntil(
                         '/login',
