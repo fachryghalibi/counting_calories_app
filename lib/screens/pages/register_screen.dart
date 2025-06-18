@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'login_page.dart';
+import 'package:aplikasi_counting_calories/service/register_service.dart'; 
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -14,6 +14,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   bool _isPasswordVisible = false;
+  bool _isLoading = false; // Loading state
 
   @override
   void dispose() {
@@ -133,6 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       textInputAction: TextInputAction.next,
       autocorrect: false,
       enableSuggestions: false,
+      enabled: !_isLoading, // Disable when loading
       style: TextStyle(
         color: Colors.white,
         fontSize: 16,
@@ -199,6 +201,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       textInputAction: TextInputAction.done,
       autocorrect: false,
       enableSuggestions: false,
+      enabled: !_isLoading, // Disable when loading
       style: TextStyle(
         color: Colors.white,
         fontSize: 16,
@@ -273,9 +276,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _handleCreateAccount,
+        onPressed: _isLoading ? null : _handleCreateAccount, // Disable when loading
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF4A90E2),
+          backgroundColor: _isLoading ? Colors.grey : Color(0xFF4A90E2),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -283,13 +286,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
           elevation: 2,
           shadowColor: Color(0xFF4A90E2).withOpacity(0.3),
         ),
-        child: Text(
-          'Create Account',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: _isLoading
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Creating Account...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                'Create Account',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
@@ -319,7 +344,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: _handleGoogleLogin,
+        onPressed: _isLoading ? null : _handleGoogleLogin, // Disable when loading
         icon: Container(
           width: 24,
           height: 24,
@@ -341,13 +366,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         label: Text(
           'Continue with Google',
           style: TextStyle(
-            color: Colors.white,
+            color: _isLoading ? Colors.grey : Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.white30, width: 1.5),
+          side: BorderSide(
+            color: _isLoading ? Colors.grey : Colors.white30, 
+            width: 1.5
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -393,69 +421,88 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _handleCreateAccount() {
+  void _handleCreateAccount() async {
     if (_formKey.currentState!.validate()) {
-      // Hide keyboard first
+      setState(() {
+        _isLoading = true;
+      });
+      
+      // Hide keyboard
       FocusScope.of(context).unfocus();
       
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4A90E2)),
-            ),
-          );
-        },
-      );
+      try {
+        final result = await RegisterService.register(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
-      // Simulate account creation delay
-      Future.delayed(Duration(seconds: 2), () {
-        Navigator.of(context).pop(); // Close loading dialog
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Account created successfully!'),
-              ],
-            ),
-            backgroundColor: Color(0xFF4A90E2),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+        if (result['success']) {
+          // Show success message
+          _showSnackBar(
+            message: result['message'],
+            isError: false,
+            icon: Icons.check_circle,
+          );
+          
+          // Navigate to login page after success
+          Future.delayed(Duration(seconds: 1), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginPage()),
+            );
+          });
+        } else {
+          // Show error message
+          _showSnackBar(
+            message: result['message'],
+            isError: true,
+            icon: Icons.error_outline,
+          );
+        }
+      } catch (e) {
+        _showSnackBar(
+          message: 'An unexpected error occurred. Please try again.',
+          isError: true,
+          icon: Icons.error_outline,
         );
-        
-        // Navigate to login page
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
-        );
-      });
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _handleGoogleLogin() {
+    _showSnackBar(
+      message: 'Google login will be implemented soon',
+      isError: false,
+      icon: Icons.info_outline,
+      backgroundColor: Colors.orange,
+    );
+  }
+
+  void _showSnackBar({
+    required String message,
+    required bool isError,
+    required IconData icon,
+    Color? backgroundColor,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.white),
+            Icon(icon, color: Colors.white),
             SizedBox(width: 8),
-            Text('Google login will be implemented soon'),
+            Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Colors.orange,
+        backgroundColor: backgroundColor ?? (isError ? Colors.redAccent : Color(0xFF4A90E2)),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+        duration: Duration(seconds: 3),
       ),
     );
   }
