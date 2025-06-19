@@ -126,33 +126,47 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
     return Scaffold(
       backgroundColor: Color(0xFF1A1A2E),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: ClampingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 60),
-              _buildHeader(),
-              SizedBox(height: 60),
-              _buildLoginForm(),
-              SizedBox(height: 20),
-              _buildRememberMeSection(),
-              SizedBox(height: 40),
-              _buildLoginButton(),
-              SizedBox(height: 20),
-              _buildForgotPasswordButton(),
-              SizedBox(height: 40),
-              _buildDivider(),
-              SizedBox(height: 30),
-              _buildSocialLoginButtons(),
-              SizedBox(height: 40),
-              _buildSignUpSection(),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: keyboardHeight > 0 ? BouncingScrollPhysics() : NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 40),
+                      _buildHeader(),
+                      SizedBox(height: 40),
+                      _buildLoginForm(),
+                      SizedBox(height: 16),
+                      _buildRememberMeSection(),
+                      SizedBox(height: 24),
+                      _buildLoginButton(),
+                      SizedBox(height: 16),
+                      _buildForgotPasswordButton(),
+                      SizedBox(height: 24),
+                      _buildDivider(),
+                      SizedBox(height: 20),
+                      _buildSocialLoginButtons(),
+                      Spacer(),
+                      _buildSignUpSection(),
+                      SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -166,16 +180,16 @@ class _LoginPageState extends State<LoginPage> {
           'Welcome Back',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 32,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 8),
+        SizedBox(height: 6),
         Text(
           'Sign in to continue your health journey',
           style: TextStyle(
             color: Colors.grey[400],
-            fontSize: 16,
+            fontSize: 15,
           ),
         ),
       ],
@@ -188,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
       child: Column(
         children: [
           _buildEmailField(),
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           _buildPasswordField(),
         ],
       ),
@@ -207,6 +221,7 @@ class _LoginPageState extends State<LoginPage> {
         prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[400]),
         filled: true,
         fillColor: Color(0xFF363B59),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -258,6 +273,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         filled: true,
         fillColor: Color(0xFF363B59),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -285,18 +301,21 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildRememberMeSection() {
     return Row(
       children: [
-        Checkbox(
-          value: _rememberMe,
-          onChanged: (value) {
-            setState(() {
-              _rememberMe = value ?? false;
-            });
-            // Save/clear credentials immediately when checkbox changes
-            _saveCredentials();
-          },
-          activeColor: Color(0xFF007AFF),
-          checkColor: Colors.white,
-          side: BorderSide(color: Colors.grey[400]!),
+        Transform.scale(
+          scale: 0.9,
+          child: Checkbox(
+            value: _rememberMe,
+            onChanged: (value) {
+              setState(() {
+                _rememberMe = value ?? false;
+              });
+              // Save/clear credentials immediately when checkbox changes
+              _saveCredentials();
+            },
+            activeColor: Color(0xFF007AFF),
+            checkColor: Colors.white,
+            side: BorderSide(color: Colors.grey[400]!),
+          ),
         ),
         Text(
           'Remember me',
@@ -312,7 +331,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLoginButton() {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 52,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _login,
         style: ElevatedButton.styleFrom(
@@ -473,6 +492,9 @@ Future<void> _login() async {
     return Center(
       child: TextButton(
         onPressed: _isLoading ? null : _handleForgotPassword,
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
         child: Text(
           'Forgot Password?',
           style: TextStyle(
@@ -524,7 +546,7 @@ Future<void> _login() async {
           Colors.black,
           _handleGoogleLogin,
         ),
-        SizedBox(height: 12),
+        SizedBox(height: 10),
         _buildSocialButton(
           'Continue with Apple',
           Icons.apple,
@@ -545,7 +567,7 @@ Future<void> _login() async {
   ) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 48,
       child: OutlinedButton(
         onPressed: _isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
@@ -569,7 +591,7 @@ Future<void> _login() async {
               text,
               style: TextStyle(
                 color: _isLoading ? textColor.withOpacity(0.6) : textColor,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -580,7 +602,8 @@ Future<void> _login() async {
   }
 
   Widget _buildSignUpSection() {
-    return Center(
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -593,6 +616,11 @@ Future<void> _login() async {
           ),
           TextButton(
             onPressed: _isLoading ? null : _handleSignUp,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: Text(
               'Sign Up',
               style: TextStyle(

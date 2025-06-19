@@ -318,7 +318,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 extension UserDataDebug on UserData {
   String toDebugString() {
     return '''
-    UserData Debug:
     - firstName: $firstName
     - gender: $gender
     - height: $height ($heightUnit)
