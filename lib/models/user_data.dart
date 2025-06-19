@@ -5,7 +5,7 @@ class UserData {
   List<String> selectedHabits = [];
   bool? wantsWeeklyMealPlan;
   List<String> selectedGoals = [];
-  String? activityLevel;
+  int? activityLevel; // Changed from String? to int?
   String gender = '';
   int? birthDay;
   int? birthMonth;
@@ -119,7 +119,7 @@ class UserData {
     }
   }
 
-  void updateActivityLevel(String level) {
+  void updateActivityLevel(int level) { // Changed parameter type from String to int
     activityLevel = level;
   }
 
@@ -195,11 +195,11 @@ class UserData {
   bool get hasValidWeight => weight.isNotEmpty;
   bool get hasValidGoalWeight => goalWeight.isNotEmpty;
   bool get hasValidPersonalInfo => firstName.isNotEmpty;
-  bool get hasValidActivityLevel => activityLevel != null && activityLevel!.isNotEmpty;
+  bool get hasValidActivityLevel => activityLevel != null; // Updated validation
   
   // Check if body measurements are complete
   bool get hasCompleteBodyMeasurements => 
-      hasValidHeight && hasValidWeight && hasValidGoalWeight;
+      hasValidHeight && hasValidWeight;
 
   Map<String, dynamic> toMap() {
     return {
@@ -232,7 +232,7 @@ class UserData {
     userData.selectedHabits = List<String>.from(map['selectedHabits'] ?? []);
     userData.wantsWeeklyMealPlan = map['wantsWeeklyMealPlan'];
     userData.selectedGoals = List<String>.from(map['selectedGoals'] ?? []);
-    userData.activityLevel = map['activityLevel'];
+    userData.activityLevel = map['activityLevel']; // No type conversion needed now
     userData.gender = map['gender'] ?? '';
     userData.birthDay = map['birthDay'];
     userData.birthMonth = map['birthMonth'];
