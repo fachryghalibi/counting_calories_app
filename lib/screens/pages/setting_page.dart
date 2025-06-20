@@ -1,3 +1,4 @@
+import 'package:aplikasi_counting_calories/service/deactive_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +14,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _userName = ' ';
   String _userEmail = ' ';
   bool _isMetric = true;
+  bool _isDeletingAccount = false;
 
   @override
   void initState() {
@@ -22,13 +24,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userName = prefs.getString('username') ?? ' ';
-      _userEmail = prefs.getString('email') ?? ' ';
-    });
+    if (mounted) {
+      setState(() {
+        _userName = prefs.getString('username') ?? ' ';
+        _userEmail = prefs.getString('email') ?? ' ';
+      });
+    }
   }
 
   Future<void> _logout() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
@@ -36,11 +42,9 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // ✅ Ambil user ID sebelum menghapus session
       final userId = prefs.getInt('id') ?? 0;
       print('🔄 Logging out user ID: $userId');
       
-      // ✅ Hapus hanya session data, BUKAN user-specific data seperti onboarding status
       await prefs.remove('isLoggedIn');
       await prefs.remove('id');
       await prefs.remove('full_name');
@@ -49,7 +53,6 @@ class _SettingsPageState extends State<SettingsPage> {
       await prefs.remove('dateOfBirth');
       await prefs.remove('auth_token');
       
-      // Hapus data global (yang akan di-replace ketika user lain login)
       await prefs.remove('gender');
       await prefs.remove('height');
       await prefs.remove('weight');
@@ -67,25 +70,189 @@ class _SettingsPageState extends State<SettingsPage> {
       print('✅ Session cleared for user $userId');
       print('✅ User-specific onboarding data preserved');
       
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/login',
-        (Route<dynamic> route) => false,
-      );
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (Route<dynamic> route) => false,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error logging out: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging out: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
+  Future<void> _deleteAccount(String password) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isDeletingAccount = true;
+    });
+
+    try {
+      print('🔍 Debug Password Info:');
+      print('   Password length: ${password.length}');
+      print('   Password trimmed length: ${password.trim().length}');
+      
+      if (!DeactiveService.isValidPassword(password)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Password must be at least 6 characters long'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      print('🔄 Calling deactivate service...');
+      final result = await DeactiveService.deactivateAccount(password);
+      print('🔄 Deactivate result: $result');
+
+      // ✅ FIX: Improved success detection logic
+      bool isSuccessful = _isDeactivationSuccessful(result);
+
+      if (isSuccessful) {
+        // Success - clear all user data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Account deactivated successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        await Future.delayed(Duration(seconds: 2));
+
+        if (mounted) {
+          print('🔄 Navigating to login page...');
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (Route<dynamic> route) => false,
+          );
+        }
+      } else {
+        if (mounted) {
+          String errorMessage = _getErrorMessage(result);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () {
+                  _showDeleteAccountDialog();
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Unexpected error in _deleteAccount: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeletingAccount = false;
+        });
+      }
+    }
+  }
+
+  // ✅ NEW: Separate method to check if deactivation was successful
+  bool _isDeactivationSuccessful(Map<String, dynamic> result) {
+    // Check explicit success flag first
+    if (result['success'] == true) {
+      return true;
+    }
+    
+    // If success flag is false but message indicates success
+    if (result['message'] != null) {
+      String message = result['message'].toString().toLowerCase();
+      // Look for success indicators in the message
+      List<String> successIndicators = [
+        'successful',
+        'success',
+        'deactivated',
+        'deleted',
+        'removed',
+        'account deactivation successful', // Exact match from your API
+      ];
+      
+      for (String indicator in successIndicators) {
+        if (message.contains(indicator)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  // ✅ NEW: Separate method to get appropriate error message
+  String _getErrorMessage(Map<String, dynamic> result) {
+    String errorMessage = result['message'] ?? 'Failed to deactivate account';
+    
+    // Customize error messages for better UX
+    if (errorMessage.toLowerCase().contains('password')) {
+      return 'Incorrect password. Please check your password and try again.';
+    } else if (errorMessage.toLowerCase().contains('unauthorized')) {
+      return 'Session expired. Please login again and try.';
+    } else if (errorMessage.toLowerCase().contains('network')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    
+    return errorMessage;
+  }
+
+  void _showDeleteAccountDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return _DeleteAccountDialog(
+          isDeletingAccount: _isDeletingAccount,
+          onDeleteAccount: _deleteAccount,
+        );
+      },
+    );
+  }
+
   void _showLogoutDialog() {
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -144,7 +311,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _buildHelpSection(),
                 SizedBox(height: 20),
                 _buildLogoutButton(),
-                SizedBox(height: 20), // Extra space for bottom nav
+                SizedBox(height: 20),
               ],
             ),
           ),
@@ -282,17 +449,13 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: Icons.restaurant_outlined,
           title: 'Edit Nutrition Goal',
           subtitle: 'Customize your daily nutrition targets',
-          onTap: () {
-            // Navigate to nutrition goal page
-          },
+          onTap: () {},
         ),
         _buildSettingItem(
           icon: Icons.directions_run_outlined,
           title: 'Activity Level',
           subtitle: 'Set your daily activity level',
-          onTap: () {
-            // Navigate to activity level page
-          },
+          onTap: () {},
         ),
       ],
     );
@@ -306,25 +469,19 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: Icons.tune_outlined,
           title: 'Calibration',
           subtitle: 'Adjust app settings for accuracy',
-          onTap: () {
-            // Navigate to calibration page
-          },
+          onTap: () {},
         ),
         _buildSettingItem(
           icon: Icons.download_outlined,
           title: 'Export My Data',
           subtitle: 'Download your personal data',
-          onTap: () {
-            // Export data functionality
-          },
+          onTap: () {},
         ),
         _buildSettingItem(
           icon: Icons.delete_outline,
           title: 'Delete Account',
           subtitle: 'Permanently delete your account',
-          onTap: () {
-            // Show delete account dialog
-          },
+          onTap: _showDeleteAccountDialog,
           isDestructive: true,
         ),
       ],
@@ -441,9 +598,7 @@ class _SettingsPageState extends State<SettingsPage> {
       icon: Icons.help_outline,
       title: 'Help & FAQ',
       subtitle: 'Get help and find answers',
-      onTap: () {
-        // Navigate to help page
-      },
+      onTap: () {},
       showContainer: true,
     );
   }
@@ -577,6 +732,170 @@ class _SettingsPageState extends State<SettingsPage> {
     return GestureDetector(
       onTap: onTap,
       child: content,
+    );
+  }
+}
+
+// ✅ NEW: Separate StatefulWidget for Delete Account Dialog
+class _DeleteAccountDialog extends StatefulWidget {
+  final bool isDeletingAccount;
+  final Function(String) onDeleteAccount;
+
+  const _DeleteAccountDialog({
+    required this.isDeletingAccount,
+    required this.onDeleteAccount,
+  });
+
+  @override
+  _DeleteAccountDialogState createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  late TextEditingController _passwordController;
+  bool _isPasswordVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Color(0xFF2D2D44),
+      title: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.red,
+            size: 24,
+          ),
+          SizedBox(width: 12),
+          Text(
+            'Delete Account',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This action cannot be undone. Your account will be permanently deactivated.',
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 14,
+              ),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Enter your password to confirm:',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: _passwordController,
+              obscureText: !_isPasswordVisible,
+              style: TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Enter your password',
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.grey[400],
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: widget.isDeletingAccount
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                },
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: Colors.grey[400]),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: widget.isDeletingAccount
+              ? null
+              : () {
+                  if (_passwordController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please enter your password'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final password = _passwordController.text.trim();
+                  Navigator.of(context).pop();
+                  widget.onDeleteAccount(password);
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: widget.isDeletingAccount
+              ? SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  'Delete Account',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
