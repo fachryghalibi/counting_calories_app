@@ -10,8 +10,8 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
-  String _userName = 'User';
-  String _userEmail = 'usermail@mail.com';
+  String _userName = ' ';
+  String _userEmail = ' ';
   bool _isMetric = true;
 
   @override
@@ -23,68 +23,67 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userName = prefs.getString('username') ?? 'User';
-      _userEmail = prefs.getString('email') ?? 'usermail@mail.com';
+      _userName = prefs.getString('username') ?? ' ';
+      _userEmail = prefs.getString('email') ?? ' ';
     });
   }
 
   Future<void> _logout() async {
-  setState(() {
-    _isLoading = true;
-  });
-
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // ✅ Ambil user ID sebelum menghapus session
-    final userId = prefs.getInt('id') ?? 0;
-    print('🔄 Logging out user ID: $userId');
-    
-    // ✅ Hapus hanya session data, BUKAN user-specific data seperti onboarding status
-    await prefs.remove('isLoggedIn');
-    await prefs.remove('id');
-    await prefs.remove('full_name');
-    await prefs.remove('email');
-    await prefs.remove('created_at');
-    await prefs.remove('dateOfBirth');
-    await prefs.remove('auth_token');
-    
-    // Hapus data global (yang akan di-replace ketika user lain login)
-    await prefs.remove('gender');
-    await prefs.remove('height');
-    await prefs.remove('weight');
-    await prefs.remove('activityLevel');
-    await prefs.remove('active');
-    await prefs.remove('profileImage');
-    await prefs.remove('goalWeight');
-    await prefs.remove('heightUnit');
-    await prefs.remove('weightUnit');
-    await prefs.remove('birthDate');
-    await prefs.remove('birthDay');
-    await prefs.remove('birthMonth');
-    await prefs.remove('birthYear');
-    
-    
-    print('✅ Session cleared for user $userId');
-    print('✅ User-specific onboarding data preserved');
-    
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/login',
-      (Route<dynamic> route) => false,
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error logging out: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
     setState(() {
-      _isLoading = false;
+      _isLoading = true;
     });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // ✅ Ambil user ID sebelum menghapus session
+      final userId = prefs.getInt('id') ?? 0;
+      print('🔄 Logging out user ID: $userId');
+      
+      // ✅ Hapus hanya session data, BUKAN user-specific data seperti onboarding status
+      await prefs.remove('isLoggedIn');
+      await prefs.remove('id');
+      await prefs.remove('full_name');
+      await prefs.remove('email');
+      await prefs.remove('created_at');
+      await prefs.remove('dateOfBirth');
+      await prefs.remove('auth_token');
+      
+      // Hapus data global (yang akan di-replace ketika user lain login)
+      await prefs.remove('gender');
+      await prefs.remove('height');
+      await prefs.remove('weight');
+      await prefs.remove('activityLevel');
+      await prefs.remove('active');
+      await prefs.remove('profileImage');
+      await prefs.remove('goalWeight');
+      await prefs.remove('heightUnit');
+      await prefs.remove('weightUnit');
+      await prefs.remove('birthDate');
+      await prefs.remove('birthDay');
+      await prefs.remove('birthMonth');
+      await prefs.remove('birthYear');
+      
+      print('✅ Session cleared for user $userId');
+      print('✅ User-specific onboarding data preserved');
+      
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error logging out: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
   void _showLogoutDialog() {
     showDialog(
@@ -126,35 +125,31 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFF1A1A2E),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    _buildProfileCard(),
-                    SizedBox(height: 20),
-                    _buildPreferencesSection(),
-                    SizedBox(height: 20),
-                    _buildAccountSection(),
-                    SizedBox(height: 20),
-                    _buildUnitSection(),
-                    SizedBox(height: 20),
-                    _buildHelpSection(),
-                    SizedBox(height: 20),
-                    _buildLogoutButton(),
-                  ],
-                ),
-              ),
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _buildProfileCard(),
+                SizedBox(height: 20),
+                _buildPreferencesSection(),
+                SizedBox(height: 20),
+                _buildAccountSection(),
+                SizedBox(height: 20),
+                _buildUnitSection(),
+                SizedBox(height: 20),
+                _buildHelpSection(),
+                SizedBox(height: 20),
+                _buildLogoutButton(),
+                SizedBox(height: 20), // Extra space for bottom nav
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -163,22 +158,6 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: EdgeInsets.all(20),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          SizedBox(width: 16),
           Text(
             'Settings',
             style: TextStyle(

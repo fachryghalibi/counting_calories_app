@@ -1,70 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart';
+import 'package:aplikasi_counting_calories/widgets/navigation_bar_bottom.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class HomePage extends StatefulWidget {
+class MainNavigationWrapper extends StatefulWidget {
   final String userName;
   
-  const HomePage({Key? key, this.userName = 'User'}) : super(key: key);
+  const MainNavigationWrapper({Key? key, this.userName = 'User'}) : super(key: key);
 
   @override
-  _HomePageState createState() => _HomePageState();
+  _MainNavigationWrapperState createState() => _MainNavigationWrapperState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int currentIndex = 0;
-  String userName = 'User'; // State variable untuk menyimpan username
+  String userName = 'User';
 
   @override
   void initState() {
     super.initState();
-    _loadUserName(); // Load username saat widget diinisialisasi
+    _loadUserName();
   }
 
-  // Fungsi untuk mendapatkan sapaan berdasarkan waktu
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    
-    if (hour >= 5 && hour < 12) {
-      return 'Good Morning';
-    } else if (hour >= 12 && hour < 17) {
-      return 'Good Afternoon';
-    } else if (hour >= 17 && hour < 21) {
-      return 'Good Evening';
-    } else {
-      return 'Good Night';
-    }
-  }
-
-  // Fungsi untuk mendapatkan emoji berdasarkan waktu
-  String _getGreetingEmoji() {
-    final hour = DateTime.now().hour;
-    
-    if (hour >= 5 && hour < 12) {
-      return '☀️'; // Pagi
-    } else if (hour >= 12 && hour < 17) {
-      return '🌤️'; // Siang
-    } else if (hour >= 17 && hour < 21) {
-      return '🌆'; // Sore
-    } else {
-      return '🌙'; // Malam
-    }
-  }
-
-  // Fungsi untuk load username dari SharedPreferences
   Future<void> _loadUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final loadedUserName = prefs.getString('full_name') ?? 
-                            prefs.getString('username') ?? 
-                            widget.userName; // Fallback ke parameter widget
-      
+      final loadedUserName = prefs.getString('full_name') ??
+          prefs.getString('username') ??
+          widget.userName;
+
       setState(() {
         userName = loadedUserName;
       });
     } catch (e) {
       print('Error loading username: $e');
-      // Jika terjadi error, gunakan default value
       setState(() {
         userName = widget.userName;
       });
@@ -72,17 +41,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handleBottomNavTap(int index) {
-    if (index == 4) {
-      // Navigate to Settings page
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => SettingsPage(),
-        ),
-      );
-    } else {
-      setState(() {
-        currentIndex = index;
-      });
+    setState(() {
+      currentIndex = index;
+    });
+  }
+
+  Widget _getCurrentPage() {
+    switch (currentIndex) {
+      case 0:
+        return _buildHomePage();
+      case 1:
+        return _buildPlaceholderPage('Dashboard');
+      case 2:
+        return _buildPlaceholderPage('Record');
+      case 3:
+        return _buildPlaceholderPage('History');
+      case 4:
+        return SettingsPage();
+      default:
+        return _buildHomePage();
     }
   }
 
@@ -91,9 +68,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Color(0xFF1A1A2E),
       body: SafeArea(
-        child: currentIndex == 0 ? _buildHomePage() : _buildPlaceholderPage(),
+        child: _getCurrentPage(),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: _handleBottomNavTap,
+      ),
     );
   }
 
@@ -141,7 +121,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             Text(
-              userName, // Gunakan state variable userName
+              userName,
               style: TextStyle(
                 color: Colors.blue[300],
                 fontSize: 24,
@@ -164,6 +144,34 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    
+    if (hour >= 5 && hour < 12) {
+      return 'Good Morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good Afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      return 'Good Evening';
+    } else {
+      return 'Good Night';
+    }
+  }
+
+  String _getGreetingEmoji() {
+    final hour = DateTime.now().hour;
+    
+    if (hour >= 5 && hour < 12) {
+      return '☀️';
+    } else if (hour >= 12 && hour < 17) {
+      return '🌤️';
+    } else if (hour >= 17 && hour < 21) {
+      return '🌆';
+    } else {
+      return '🌙';
+    }
   }
 
   Widget _buildTodaySection() {
@@ -262,7 +270,7 @@ class _HomePageState extends State<HomePage> {
             width: 100,
             height: 100,
             child: CircularProgressIndicator(
-              value: 0.45, // 1007/2200
+              value: 0.45,
               strokeWidth: 8,
               backgroundColor: Colors.grey[700],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
@@ -471,111 +479,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPlaceholderPage() {
+  Widget _buildPlaceholderPage(String pageName) {
     return Center(
       child: Text(
-        'Coming Soon',
+        '$pageName - Coming Soon',
         style: TextStyle(
           color: Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w500,
         ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Color(0xFF2D2D44),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: _handleBottomNavTap,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey[400],
-        elevation: 0,
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-        items: [
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: currentIndex == 0 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.home_outlined,
-                color: currentIndex == 0 ? Colors.white : Colors.grey[400],
-              ),
-            ),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: currentIndex == 1 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.dashboard_outlined,
-                color: currentIndex == 1 ? Colors.white : Colors.grey[400],
-              ),
-            ),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            label: 'Record',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: currentIndex == 3 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.history_outlined,
-                color: currentIndex == 3 ? Colors.white : Colors.grey[400],
-              ),
-            ),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: currentIndex == 4 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.settings_outlined,
-                color: currentIndex == 4 ? Colors.white : Colors.grey[400],
-              ),
-            ),
-            label: 'Settings',
-          ),
-        ],
       ),
     );
   }

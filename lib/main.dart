@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterScreen(),
         '/onboarding': (context) => OnboardingFlow(),
-        '/home': (context) => HomePage(),
+        '/home': (context) => MainNavigationWrapper(),
         // Tambahkan route lain sesuai kebutuhan
         // '/profile': (context) => ProfilePage(),
       },
