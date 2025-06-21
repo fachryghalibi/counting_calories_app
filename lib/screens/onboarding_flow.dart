@@ -1,6 +1,8 @@
 import 'package:aplikasi_counting_calories/screens/pages/body_measure_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/user_data.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/progress_bar.dart';
@@ -159,6 +161,103 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
+  // ✅ NEW: Function to update onboarding completion status in database
+  // ✅ FIXED: Add completedOnboarding to request body
+Future<bool> _updateOnboardingStatusInDatabase() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('id') ?? 0;
+    
+    // Debug: Print all stored keys
+    print('🔍 Debug: All SharedPreferences keys:');
+    final keys = prefs.getKeys();
+    for (String key in keys) {
+      if (key.toLowerCase().contains('token') || key.toLowerCase().contains('auth')) {
+        print('   - $key: ${prefs.getString(key)}');
+      }
+    }
+    
+    // Try different token key possibilities
+    String? token = prefs.getString('token') ?? 
+                   prefs.getString('auth_token') ?? 
+                   prefs.getString('access_token') ??
+                   prefs.getString('jwt_token') ??
+                   prefs.getString('api_token');
+
+    print('🔄 User ID: $userId');
+    print('🔄 Token found: ${token != null ? "Yes (${token.length} chars)" : "No"}');
+
+    if (userId == 0) {
+      print('❌ Error: Missing user ID');
+      return false;
+    }
+
+    const String baseUrl = 'http://10.0.2.2:3000';
+    final String url = '$baseUrl/user/setupAccount';
+
+    print('🔄 Calling setupAccount endpoint: $url');
+
+    // Create headers
+    Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add Authorization header if token available
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+      print('🔄 Using token authentication');
+    } else {
+      print('🔄 No token found, proceeding without authentication header');
+    }
+
+    // ✅ FIXED: Add completedOnboarding field
+    final requestBody = {
+      'userId': userId,
+      'username': userData.firstName.isNotEmpty ? userData.firstName : 'User',
+      'gender': userData.gender,
+      'height': double.tryParse(userData.height) ?? 0.0,
+      'weight': double.tryParse(userData.weight) ?? 0.0,
+      'activityLevel': userData.activityLevel,
+      'completedOnboarding': 1, // ✅ ADD THIS LINE
+    };
+
+    // Handle dateOfBirth
+    if (userData.birthDate != null) {
+      requestBody['dateOfBirth'] = userData.birthDate!.toIso8601String().split('T')[0];
+    } else if (userData.birthYear != null && userData.birthMonth != null && userData.birthDay != null) {
+      final dateStr = '${userData.birthYear!.toString().padLeft(4, '0')}-${userData.birthMonth!.toString().padLeft(2, '0')}-${userData.birthDay!.toString().padLeft(2, '0')}';
+      requestBody['dateOfBirth'] = dateStr;
+    }
+
+    print('🔄 Request body: ${json.encode(requestBody)}');
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: headers,
+      body: json.encode(requestBody),
+    );
+
+    print('🔄 Response status: ${response.statusCode}');
+    print('🔄 Response body: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print('✅ Onboarding status updated successfully in database');
+      return true;
+    } else if (response.statusCode == 500 && response.body.contains('Setup for this account is already completed')) {
+      print('✅ Onboarding already completed for this account');
+      return true;
+    } else {
+      print('❌ Failed to update onboarding status: ${response.statusCode}');
+      print('❌ Response body: ${response.body}');
+      return false;
+    }
+
+  } catch (e) {
+    print('❌ Error calling setupAccount endpoint: $e');
+    return false;
+  }
+}
+
   Future<void> _completeOnboarding() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -176,11 +275,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return;
       }
 
-      // ✅ FIXED: Set onboarding_completed based on user ID
+      // ✅ NEW: Update onboarding status in database first
+      print('🔄 Updating onboarding status in database...');
+      final dbUpdateSuccess = await _updateOnboardingStatusInDatabase();
+      
+      if (!dbUpdateSuccess) {
+        _showErrorDialog('Failed to complete setup. Please check your connection and try again.');
+        return;
+      }
+
+      // ✅ FIXED: Set onboarding_completed based on user ID (local storage)
       await prefs.setBool('onboarding_completed_$userId', true);
       
       print('✅ Onboarding completed successfully for user $userId');
       print('✅ onboarding_completed_$userId set to true');
+      print('✅ Database onboarding status updated');
       
       // Save onboarding data with user-specific keys (optional)
       await prefs.setString('gender_$userId', userData.gender);

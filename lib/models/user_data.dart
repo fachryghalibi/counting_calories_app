@@ -19,6 +19,9 @@ class UserData {
   String? heightUnit = 'cm'; // 'cm' or 'ft'
   String? weightUnit = 'kg'; // 'kg' or 'lbs'
   
+  // ✅ TAMBAHAN: Field untuk onboarding status
+  bool completedOnboarding = false; // Default false untuk user baru
+  
   // Default constructor
   UserData({
     this.id,
@@ -38,6 +41,7 @@ class UserData {
     this.goalWeight = '',
     this.heightUnit = 'cm',
     this.weightUnit = 'kg',
+    this.completedOnboarding = false, // ✅ TAMBAHAN: Default false
   }) : selectedHabits = selectedHabits ?? [],
        selectedGoals = selectedGoals ?? [];
   
@@ -164,6 +168,11 @@ class UserData {
     weightUnit = unit;
   }
 
+  // ✅ TAMBAHAN: Method untuk update onboarding status
+  void updateOnboardingStatus(bool completed) {
+    completedOnboarding = completed;
+  }
+
   // Helper method to get age from birth date
   int? get age {
     if (birthDay == null || birthMonth == null || birthYear == null) {
@@ -201,6 +210,9 @@ class UserData {
   bool get hasCompleteBodyMeasurements => 
       hasValidHeight && hasValidWeight;
 
+  // ✅ TAMBAHAN: Check if onboarding is completed
+  bool get hasCompletedOnboarding => completedOnboarding;
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -220,6 +232,7 @@ class UserData {
       'goalWeight': goalWeight,
       'heightUnit': heightUnit,
       'weightUnit': weightUnit,
+      'completedOnboarding': completedOnboarding, // ✅ TAMBAHAN
     };
   }
   
@@ -243,6 +256,7 @@ class UserData {
     userData.goalWeight = map['goalWeight'] ?? '';
     userData.heightUnit = map['heightUnit'] ?? 'cm';
     userData.weightUnit = map['weightUnit'] ?? 'kg';
+    userData.completedOnboarding = map['completedOnboarding'] ?? false; 
     return userData;
   }
 }

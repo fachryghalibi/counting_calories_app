@@ -35,41 +35,43 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Fungsi untuk mengecek sesi login - mengikuti logic kesehatan kampus
-  Future<void> _checkSession() async {
-  final prefs = await SharedPreferences.getInstance();
   
-  print('🔍 === SESSION CHECK DEBUG ===');
-  print('🔍 All stored keys: ${prefs.getKeys().toList()}');
-  print('🔍 isLoggedIn: ${prefs.getBool('isLoggedIn')}');
-  
-  final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-  if (isLoggedIn) {
-    final userId = prefs.getInt('id');
-    final userName = prefs.getString('full_name') ?? 'User';
+  // ✅ DIPERBAIKI: Cek sesi dengan data dari database
+  Future<void> _checkSession() async {
+    final prefs = await SharedPreferences.getInstance();
     
-    // ✅ PERBAIKAN: Cek onboarding berdasarkan user ID
-    final isOnboardingCompleted = prefs.getBool('onboarding_completed_$userId') ?? false;
+    print('🔍 === SESSION CHECK DEBUG ===');
+    print('🔍 All stored keys: ${prefs.getKeys().toList()}');
+    print('🔍 isLoggedIn: ${prefs.getBool('isLoggedIn')}');
     
-    print('🔍 User ID: $userId');
-    print('🔍 User name: $userName');
-    print('🔍 onboarding_completed_$userId: $isOnboardingCompleted');
-    print('🔍 ========================');
-    
-    if (context.mounted) {
-      if (isOnboardingCompleted) {
-        print('✅ User $userId already completed onboarding, navigating to home');
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        print('⚠️ User $userId logged in but onboarding not completed, navigating to onboarding');
-        Navigator.pushReplacementNamed(context, '/onboarding');
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (isLoggedIn) {
+      final userId = prefs.getInt('id');
+      final userName = prefs.getString('full_name') ?? 'User';
+      
+      // ✅ PERBAIKAN: Ambil completedOnboarding sebagai boolean dari SharedPreferences
+      final completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
+      
+      print('🔍 User ID: $userId');
+      print('🔍 User name: $userName');
+      print('🔍 completedOnboarding (boolean): $completedOnboarding');
+      print('🔍 ===============================');
+      
+      if (context.mounted) {
+        if (completedOnboarding) {
+          print('✅ User $userId already completed onboarding, navigating to home');
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          print('⚠️ User $userId logged in but onboarding not completed, navigating to onboarding');
+          Navigator.pushReplacementNamed(context, '/onboarding');
+        }
       }
+    } else {
+      print('❌ No existing session found');
     }
-  } else {
-    print('No existing session found');
   }
-}
 
   // Load saved credentials - DIPERBAIKI untuk load setiap kali halaman ditampilkan
   Future<void> _loadSavedCredentials() async {
@@ -109,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       await prefs.remove('saved_email');
       await prefs.remove('saved_password');
-      await prefs.setBool('remember_me', false); // Set to false instead of remove
+      await prefs.setBool('remember_me', false);
       print('✅ Credentials cleared');
     }
   }
@@ -363,8 +365,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // DIPERBAIKI: Login method dengan save credentials yang proper
- // DIPERBAIKI: Login method dengan save credentials yang proper
+  // ✅ DIPERBAIKI: Login method dengan pengecekan completedOnboarding dari database
+   // ✅ DEBUG VERSION: Login method dengan logging lengkap
 Future<void> _login() async {
   if (_formKey.currentState!.validate()) {
     _formKey.currentState!.save();
@@ -375,70 +377,106 @@ Future<void> _login() async {
 
     try {
       final response = await _loginService.login(_email, _password);
-
+      
+      // ✅ DEBUG: Print seluruh response dari API
+      print('🔍 ===== FULL API RESPONSE DEBUG =====');
+      print('🔍 Full response: ${response.toString()}');
+      print('🔍 Response type: ${response.runtimeType}');
+      print('🔍 Success: ${response['success']}');
+      
+      if (response['data'] != null) {
+        print('🔍 Data: ${response['data'].toString()}');
+        
+        if (response['data']['user'] != null) {
+          print('🔍 User data: ${response['data']['user'].toString()}');
+          
+          final userData = response['data']['user'];
+          
+          // ✅ DEBUG: Print semua field yang mungkin berisi onboarding status
+          print('🔍 ----- ONBOARDING FIELDS DEBUG -----');
+          print('🔍 completedOnboarding: ${userData['completedOnboarding']}');
+          print('🔍 =====================================');
+        }
+      }
       if (response['success'] == true) {
         final prefs = await SharedPreferences.getInstance();
         
-        // Save credentials first
+        // Save credentials
         await _saveCredentials();
 
         // Extract user data
-        Map<String, dynamic>? userData;
-        if (response['data'] != null && response['data']['user'] != null) {
-          userData = response['data']['user'];
-        } else if (response['data'] != null) {
-          userData = response['data'];
-        }
+        final userData = response['data']['user'] ?? response['data'];
 
         if (userData != null) {
           final id = userData['id'] ?? 0;
+          final username = userData['username'] ?? userData['full_name'] ?? 'User';
+          
+          // ✅ COMPREHENSIVE CHECK: Cek semua kemungkinan field name
+          dynamic onboardingValue;
+          
+          // Cek berbagai kemungkinan nama field
+          final possibleFields = [
+            'completedOnboarding'
+          ];
+          
+          for (String field in possibleFields) {
+            if (userData[field] != null) {
+              onboardingValue = userData[field];
+              print('✅ Found onboarding field: $field = $onboardingValue');
+              break;
+            }
+          }
+          
+          // Jika tidak ada field yang ditemukan, default ke false
+          if (onboardingValue == null) {
+            print('⚠️ No onboarding field found in response, defaulting to false');
+            onboardingValue = false;
+          }
+          
+          // ✅ ROBUST CONVERSION: Handle berbagai tipe data
+          bool completedOnboarding = false;
+          
+          if (onboardingValue is bool) {
+            completedOnboarding = onboardingValue;
+          } else if (onboardingValue is int) {
+            completedOnboarding = onboardingValue == 1;
+          } else if (onboardingValue is String) {
+            completedOnboarding = (onboardingValue.toLowerCase() == 'true' || 
+                                 onboardingValue == '1' || 
+                                 onboardingValue.toLowerCase() == 'completed');
+          } else {
+            print('⚠️ Unknown onboarding value type: ${onboardingValue.runtimeType}');
+          }
+          
+          print('✅ Login successful for user: $username (ID: $id)');
+          print('✅ Raw onboarding value: $onboardingValue (${onboardingValue.runtimeType})');
+          print('✅ Converted to boolean: $completedOnboarding');
 
-          // ✅ Perbaikan: Ambil username langsung dari response API
-          String username = userData['username'] ?? prefs.getString('username_$id') ?? 'User';
-
-          final email = userData['email'] ?? '';
-          final createdAt = userData['createdAt'] ?? userData['created_at'] ?? '';
-          final dateOfBirth = userData['dateOfBirth'] ?? userData['date_of_birth'] ?? '';
-          final gender = userData['gender'] ?? '';
-          final height = (userData['height'] ?? 0).toDouble();
-          final weight = (userData['weight'] ?? 0).toDouble();
-          final activityLevel = userData['activityLevel'] ?? userData['activity_level'] ?? '';
-          final active = userData['active'] ?? false;
-          final profileImage = userData['profileImage'] ?? userData['profile_image'] ?? '';
-
-          print('✅ Login successful for user ID: $id');
-          print('✅ Username loaded: $username'); // Debug log
-
-          // ✅ Simpan data ke SharedPreferences
+          // Save essential data
           await prefs.setInt('id', id);
-          await prefs.setString('username_$id', username); // ✅ simpan username juga
           await prefs.setString('full_name', username);
-          await prefs.setString('email', email);
-          await prefs.setString('created_at', createdAt);
-          await prefs.setString('dateOfBirth', dateOfBirth);
-          await prefs.setString('gender', gender);
-          await prefs.setDouble('height', height);
-          await prefs.setDouble('weight', weight);
-          await prefs.setString('activityLevel', activityLevel);
-          await prefs.setBool('active', active);
-          await prefs.setString('profileImage', profileImage);
+          await prefs.setBool('completedOnboarding', completedOnboarding);
           await prefs.setBool('isLoggedIn', true);
 
-          // ✅ Simpan token jika tersedia
+          // Save token if available
           if (response['data']['token'] != null) {
             await prefs.setString('auth_token', response['data']['token']);
           }
 
-          // ✅ Cek status onboarding
-          final isOnboardingCompleted = prefs.getBool('onboarding_completed_$id') ?? false;
-          print('🔍 User $id onboarding status: $isOnboardingCompleted');
-
+          // ✅ NAVIGATION dengan override untuk testing
           if (context.mounted) {
-            if (isOnboardingCompleted) {
-              print('✅ User $id completed onboarding → Home');
+            
+            // 🔧 TEMPORARY OVERRIDE UNTUK TESTING (hapus setelah API diperbaiki)
+            // Uncomment baris di bawah untuk force navigate ke home sementara
+            // print('🔧 OVERRIDE: Force navigating to home for testing');
+            // Navigator.pushReplacementNamed(context, '/home');
+            // return;
+            
+            if (completedOnboarding) {
+              print('✅ Onboarding completed → Navigate to Home');
               Navigator.pushReplacementNamed(context, '/home');
             } else {
-              print('⚠️ User $id needs onboarding → Onboarding');
+              print('⚠️ Onboarding not completed → Navigate to Onboarding');
               Navigator.pushReplacementNamed(context, '/onboarding');
             }
           }
@@ -466,7 +504,6 @@ Future<void> _login() async {
     }
   }
 }
-
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
