@@ -21,13 +21,17 @@ Future<String> _determineInitialRoute() async {
   print('🔍 === MAIN APP SESSION CHECK ===');
   print('🔍 All stored keys: ${prefs.getKeys().toList()}');
   print('🔍 isLoggedIn: ${prefs.getBool('isLoggedIn')}');
-  print('🔍 onboarding_completed: ${prefs.getBool('onboarding_completed')}');
+  
+  // ✅ PERBAIKAN: Gunakan key yang sama dengan login page
+  print('🔍 completedOnboarding: ${prefs.getBool('completedOnboarding')}');
   print('🔍 full_name: ${prefs.getString('full_name')}');
   print('🔍 email: ${prefs.getString('email')}');
   print('🔍 ===============================');
   
   final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-  final isOnboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+  
+  // ✅ PERBAIKAN: Gunakan key 'completedOnboarding' yang sama dengan login page
+  final isOnboardingCompleted = prefs.getBool('completedOnboarding') ?? false;
 
   print('Is logged in: $isLoggedIn');
   print('Is onboarding completed: $isOnboardingCompleted');

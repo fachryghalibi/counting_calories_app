@@ -22,15 +22,81 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadUserData();
   }
 
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _userName = prefs.getString('username') ?? ' ';
-        _userEmail = prefs.getString('email') ?? ' ';
-      });
-    }
+Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+  
+  if (mounted) {
+    setState(() {
+      // Get the current user ID first
+      final userId = prefs.getInt('id') ?? 0;
+      
+      // Load basic user information
+      _userName = prefs.getString('full_name') ?? 
+                 prefs.getString('username_$userId') ?? 
+                 prefs.getString('username') ?? 
+                 'User';
+      
+      _userEmail = prefs.getString('email') ?? '';
+      
+      // Load additional user data
+      final userCreatedAt = prefs.getString('created_at') ?? '';
+      final userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
+      final userGender = prefs.getString('gender') ?? '';
+      final userHeight = prefs.getDouble('height') ?? 0.0;
+      final userWeight = prefs.getDouble('weight') ?? 0.0;
+      final userActivityLevel = prefs.getInt('activityLevel') ?? '';
+      final userActive = prefs.getBool('active') ?? false;
+      final userProfileImage = prefs.getString('profileImage') ?? '';
+      
+      // Load session data
+      final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
+      final authToken = prefs.getString('auth_token') ?? '';
+      
+      // Load saved credentials data
+      final savedEmail = prefs.getString('saved_email') ?? '';
+      final savedPassword = prefs.getString('saved_password') ?? '';
+      final rememberMe = prefs.getBool('remember_me') ?? false;
+      
+      // You can assign these to class variables if needed
+      // Example:
+      // _userId = userId;
+      // _userCreatedAt = userCreatedAt;
+      // _userDateOfBirth = userDateOfBirth;
+      // _userGender = userGender;
+      // _userHeight = userHeight;
+      // _userWeight = userWeight;
+      // _userActivityLevel = userActivityLevel;
+      // _userActive = userActive;
+      // _userProfileImage = userProfileImage;
+      // _isLoggedIn = isLoggedIn;
+      // _completedOnboarding = completedOnboarding;
+      // _authToken = authToken;
+    });
   }
+  
+  // Debug print to verify all data loading
+  print('🔍 === LOADING ALL USER DATA ===');
+  print('🔍 User ID: ${prefs.getInt('id')}');
+  print('🔍 Full Name: ${prefs.getString('full_name')}');
+  print('🔍 Username: ${prefs.getString('username_${prefs.getInt('id')}')}');
+  print('🔍 Email: ${prefs.getString('email')}');
+  print('🔍 Created At: ${prefs.getString('created_at')}');
+  print('🔍 Date of Birth: ${prefs.getString('dateOfBirth')}');
+  print('🔍 Gender: ${prefs.getString('gender')}');
+  print('🔍 Height: ${prefs.getDouble('height')}');
+  print('🔍 Weight: ${prefs.getDouble('weight')}');
+  print('🔍 Activity Level: ${prefs.getInt('activityLevel')}');
+  print('🔍 Active: ${prefs.getBool('active')}');
+  print('🔍 Profile Image: ${prefs.getString('profileImage')}');
+  print('🔍 Is Logged In: ${prefs.getBool('isLoggedIn')}');
+  print('🔍 Completed Onboarding: ${prefs.getBool('completedOnboarding')}');
+  print('🔍 Auth Token: ${prefs.getString('auth_token') != null ? '[TOKEN EXISTS]' : 'null'}');
+  print('🔍 Saved Email: ${prefs.getString('saved_email')}');
+  print('🔍 Remember Me: ${prefs.getBool('remember_me')}');
+  print('🔍 All Available Keys: ${prefs.getKeys().toList()}');
+  print('🔍 ===============================');
+}
 
   Future<void> _logout() async {
     if (!mounted) return;
