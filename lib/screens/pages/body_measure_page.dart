@@ -1,7 +1,8 @@
-// pages/body_measure_page.dart - Updated for double values
+// pages/body_measure_page.dart - Updated with consistent colors and snackbar
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:aplikasi_counting_calories/models/user_data.dart';
+import 'dart:async';
 
 class BodyMeasurementsPage extends StatefulWidget {
   final UserData userData;
@@ -25,6 +26,7 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
   late TextEditingController _heightController;
   late TextEditingController _weightController;
   late TextEditingController _goalWeightController;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -48,6 +50,65 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
     _weightController.dispose();
     _goalWeightController.dispose();
     super.dispose();
+  }
+
+  // Custom floating snackbar function (same as personal info)
+  void _showFloatingSnackBar(BuildContext context, String message, {required bool isSuccess}) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: 30,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSuccess ? Colors.green.withOpacity(0.9) : Colors.red.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle : Icons.error,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    // Auto remove after 3 seconds
+    Timer(Duration(seconds: 3), () {
+      overlayEntry.remove();
+    });
   }
 
   void _updateHeight(String value) {
@@ -135,6 +196,48 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
     });
   }
 
+  // Function to simulate saving body measurements
+  Future<void> _saveAndNext() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Validate inputs
+      if (!widget.userData.hasCompleteBodyMeasurements) {
+        throw Exception('Please complete all body measurements');
+      }
+
+      // Simulate API call delay
+      await Future.delayed(Duration(milliseconds: 1000));
+
+      // Show success message
+      _showFloatingSnackBar(
+        context,
+        'Body measurements saved successfully!',
+        isSuccess: true,
+      );
+
+      // Delay a bit for user to see the snackbar
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Call next callback
+      widget.onNext();
+
+    } catch (e) {
+      // Show error message
+      _showFloatingSnackBar(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isSuccess: false,
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -200,9 +303,9 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Color(0xFF363B59), // Match personal info color
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                border: Border.all(color: Colors.grey[600]!), // Match personal info border
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,34 +347,54 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
 
           Spacer(),
 
-          // Next Button
+          // Next Button - Updated to match personal info style
           if (widget.showNextButton)
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
-                onPressed: widget.userData.hasCompleteBodyMeasurements 
-                    ? widget.onNext 
+                onPressed: widget.userData.hasCompleteBodyMeasurements && !_isLoading
+                    ? _saveAndNext 
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.userData.hasCompleteBodyMeasurements 
-                      ? Colors.white 
-                      : Colors.grey[600],
-                  foregroundColor: widget.userData.hasCompleteBodyMeasurements 
-                      ? Color(0xFF1A1A2E) 
-                      : Colors.grey[400],
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: const Color(0xFF007AFF), // Match personal info button color
+                  disabledBackgroundColor: Colors.grey[700],
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(26), // Match personal info border radius
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  'Continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: _isLoading 
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Saving...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Continue',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
               ),
             ),
         ],
@@ -302,46 +425,42 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: controller,
-                keyboardType: keyboardType,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                ],
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Color(0xFF363B59), // Match personal info background color
+                  border: Border.all(color: Colors.grey[600]!), // Match personal info border
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Enter $label',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                child: TextFormField(
+                  controller: controller,
+                  keyboardType: keyboardType,
+                  enabled: !_isLoading,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  ],
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white, width: 2),
+                  decoration: InputDecoration(
+                    hintText: 'Enter $label',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: InputBorder.none, // Remove default border
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 17), // Match personal info padding
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-                  ),
+                  onChanged: onChanged,
                 ),
-                onChanged: onChanged,
               ),
             ),
             SizedBox(width: 12),
             GestureDetector(
-              onTap: onUnitToggle,
+              onTap: _isLoading ? null : onUnitToggle,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 17), // Match input field height
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Color(0xFF363B59), // Match personal info background color
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  border: Border.all(color: Colors.grey[600]!), // Match personal info border
                 ),
                 child: Text(
                   unit,
