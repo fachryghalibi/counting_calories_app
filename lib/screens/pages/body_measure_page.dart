@@ -1,328 +1,276 @@
-import 'package:aplikasi_counting_calories/service/body_measure_service.dart';
+// pages/body_measure_page.dart - Updated for double values
 import 'package:flutter/material.dart';
-import 'dart:async';
-import '../../models/user_data.dart';
+import 'package:flutter/services.dart';
+import 'package:aplikasi_counting_calories/models/user_data.dart';
 
 class BodyMeasurementsPage extends StatefulWidget {
   final UserData userData;
   final VoidCallback onChanged;
-  final VoidCallback? onNext;
+  final VoidCallback onNext;
   final bool showNextButton;
 
-  BodyMeasurementsPage({
-    required this.userData, 
+  const BodyMeasurementsPage({
+    Key? key,
+    required this.userData,
     required this.onChanged,
-    this.onNext,
+    required this.onNext,
     this.showNextButton = true,
-  });
+  }) : super(key: key);
 
   @override
   _BodyMeasurementsPageState createState() => _BodyMeasurementsPageState();
 }
 
 class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
-  final TextEditingController heightController = TextEditingController();
-  final TextEditingController weightController = TextEditingController();
-  
-  bool _isLoading = false;
+  late TextEditingController _heightController;
+  late TextEditingController _weightController;
+  late TextEditingController _goalWeightController;
 
   @override
   void initState() {
     super.initState();
-    // Initialize with existing data from UserData
-    heightController.text = widget.userData.height;
-    weightController.text = widget.userData.weight;
-  }
-
-  // Custom floating snackbar function
-  void _showFloatingSnackBar(BuildContext context, String message, {required bool isSuccess}) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: 30,
-        left: 20,
-        right: 20,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSuccess ? Colors.green.withOpacity(0.9) : Colors.red.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isSuccess ? Icons.check_circle : Icons.error,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    
+    // Initialize controllers with double values
+    _heightController = TextEditingController(
+      text: widget.userData.height > 0 ? widget.userData.height.toString() : ''
     );
+    _weightController = TextEditingController(
+      text: widget.userData.weight > 0 ? widget.userData.weight.toString() : ''
+    );
+    _goalWeightController = TextEditingController(
+      text: widget.userData.goalWeight > 0 ? widget.userData.goalWeight.toString() : ''
+    );
+  }
 
-    overlay.insert(overlayEntry);
+  @override
+  void dispose() {
+    _heightController.dispose();
+    _weightController.dispose();
+    _goalWeightController.dispose();
+    super.dispose();
+  }
 
-    // Auto remove after 3 seconds
-    Timer(Duration(seconds: 3), () {
-      overlayEntry.remove();
+  void _updateHeight(String value) {
+    // Parse as double and handle errors
+    final doubleValue = double.tryParse(value) ?? 0.0;
+    widget.userData.updateHeight(doubleValue);
+    widget.onChanged();
+  }
+
+  void _updateWeight(String value) {
+    // Parse as double and handle errors
+    final doubleValue = double.tryParse(value) ?? 0.0;
+    widget.userData.updateWeight(doubleValue);
+    widget.onChanged();
+  }
+
+  void _updateGoalWeight(String value) {
+    // Parse as double and handle errors
+    final doubleValue = double.tryParse(value) ?? 0.0;
+    widget.userData.updateGoalWeight(doubleValue);
+    widget.onChanged();
+  }
+
+  void _toggleHeightUnit() {
+    setState(() {
+      if (widget.userData.heightUnit == 'cm') {
+        // Convert cm to ft
+        if (widget.userData.height > 0) {
+          final newHeight = widget.userData.height / 30.48;
+          widget.userData.updateHeight(newHeight);
+          widget.userData.updateHeightUnit('ft');
+          _heightController.text = newHeight.toStringAsFixed(1);
+        } else {
+          widget.userData.updateHeightUnit('ft');
+        }
+      } else {
+        // Convert ft to cm
+        if (widget.userData.height > 0) {
+          final newHeight = widget.userData.height * 30.48;
+          widget.userData.updateHeight(newHeight);
+          widget.userData.updateHeightUnit('cm');
+          _heightController.text = newHeight.toStringAsFixed(0);
+        } else {
+          widget.userData.updateHeightUnit('cm');
+        }
+      }
+      widget.onChanged();
     });
   }
 
-  // Function untuk save/update body measurements dan next
-  Future<void> _saveAndNext() async {
+  void _toggleWeightUnit() {
     setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Validasi input
-      if (heightController.text.trim().isEmpty) {
-        throw Exception('Height is required');
-      }
-      
-      if (weightController.text.trim().isEmpty) {
-        throw Exception('Current weight is required');
-      }
-
-      // Validasi numeric values
-      final height = double.tryParse(heightController.text.trim());
-      final weight = double.tryParse(weightController.text.trim());
-
-      if (height == null || height <= 0) {
-        throw Exception('Please enter a valid height');
-      }
-      
-      if (weight == null || weight <= 0) {
-        throw Exception('Please enter a valid current weight');
-      }
-
-      // Update data menggunakan service (tanpa goal weight)
-      final result = await BodyMeasurementsService.updateBodyMeasurements(
-        height: height,
-        heightUnit: widget.userData.heightUnit ?? 'cm',
-        weight: weight,
-        weightUnit: widget.userData.weightUnit ?? 'kg',
-      );
-
-      if (result['success']) {
-        // Show success message dengan custom floating snackbar
-        _showFloatingSnackBar(
-          context,
-          result['message'] ?? 'Body measurements updated successfully',
-          isSuccess: true,
-        );
-
-        // Update local UserData
-        widget.userData.updateHeight(heightController.text.trim());
-        widget.userData.updateWeight(weightController.text.trim());
-        widget.onChanged();
-
-        // Panggil callback next jika ada
-        if (widget.onNext != null) {
-          widget.onNext!();
+      if (widget.userData.weightUnit == 'kg') {
+        // Convert kg to lbs
+        if (widget.userData.weight > 0) {
+          final newWeight = widget.userData.weight / 0.453592;
+          widget.userData.updateWeight(newWeight);
+          _weightController.text = newWeight.toStringAsFixed(1);
         }
-
+        
+        if (widget.userData.goalWeight > 0) {
+          final newGoalWeight = widget.userData.goalWeight / 0.453592;
+          widget.userData.updateGoalWeight(newGoalWeight);
+          _goalWeightController.text = newGoalWeight.toStringAsFixed(1);
+        }
+        
+        widget.userData.updateWeightUnit('lbs');
       } else {
-        throw Exception(result['message'] ?? 'Failed to update body measurements');
+        // Convert lbs to kg
+        if (widget.userData.weight > 0) {
+          final newWeight = widget.userData.weight * 0.453592;
+          widget.userData.updateWeight(newWeight);
+          _weightController.text = newWeight.toStringAsFixed(1);
+        }
+        
+        if (widget.userData.goalWeight > 0) {
+          final newGoalWeight = widget.userData.goalWeight * 0.453592;
+          widget.userData.updateGoalWeight(newGoalWeight);
+          _goalWeightController.text = newGoalWeight.toStringAsFixed(1);
+        }
+        
+        widget.userData.updateWeightUnit('kg');
       }
-
-    } catch (e) {
-      // Hanya tampilkan floating SnackBar untuk error
-      _showFloatingSnackBar(
-        context,
-        e.toString().replaceFirst('Exception: ', ''),
-        isSuccess: false,
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+      widget.onChanged();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(24.0),
-              physics: BouncingScrollPhysics(),
+          Text(
+            'Let\'s set up your body measurements',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'This helps us calculate your daily calorie needs',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[400],
+            ),
+          ),
+          SizedBox(height: 32),
+
+          // Height Input
+          _buildMeasurementInput(
+            label: 'Height',
+            controller: _heightController,
+            unit: widget.userData.heightUnit ?? 'cm',
+            onUnitToggle: _toggleHeightUnit,
+            onChanged: _updateHeight,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+          ),
+
+          SizedBox(height: 24),
+
+          // Current Weight Input
+          _buildMeasurementInput(
+            label: 'Current Weight',
+            controller: _weightController,
+            unit: widget.userData.weightUnit ?? 'kg',
+            onUnitToggle: _toggleWeightUnit,
+            onChanged: _updateWeight,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+          ),
+
+          SizedBox(height: 24),
+
+          // Goal Weight Input
+          _buildMeasurementInput(
+            label: 'Goal Weight',
+            controller: _goalWeightController,
+            unit: widget.userData.weightUnit ?? 'kg',
+            onUnitToggle: _toggleWeightUnit,
+            onChanged: _updateGoalWeight,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+          ),
+
+          // BMI Display
+          if (widget.userData.hasCompleteBodyMeasurements && widget.userData.bmi != null) ...[
+            SizedBox(height: 32),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 20),
                   Text(
-                    'Tell us about your body',
+                    'Your BMI',
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'This helps us calculate your daily calorie needs.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                  SizedBox(height: 32),
-                  
-                  // Height Input
-                  _buildInputField(
-                    label: 'How tall are you?',
-                    controller: heightController,
-                    unit: widget.userData.heightUnit ?? 'cm',
-                    onChanged: (value) {
-                      widget.userData.updateHeight(value);
-                      widget.onChanged();
-                    },
-                  ),
-                  
-                  SizedBox(height: 24),
-                  
-                  // Weight Input
-                  _buildInputField(
-                    label: 'How much do you weigh?',
-                    controller: weightController,
-                    unit: widget.userData.weightUnit ?? 'kg',
-                    onChanged: (value) {
-                      widget.userData.updateWeight(value);
-                      widget.onChanged();
-                    },
-                  ),
-                  
-                  SizedBox(height: 12),
-                  Text(
-                    'It\'s OK to estimate, you can update later',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                  
-                  // Show BMI if available
-                  if (widget.userData.bmi != null) ...[
-                    SizedBox(height: 24),
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF363B59),
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        widget.userData.bmi!.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Your BMI',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[300],
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '${widget.userData.bmi!.toStringAsFixed(1)}',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            '${widget.userData.bmiCategory}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: _getBMIColor(),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        widget.userData.bmiCategory ?? '',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _getBMIColor(widget.userData.bmi!),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
-                  
-                  // Add some bottom padding to ensure content isn't cut off
-                  SizedBox(height: 24),
+                    ],
+                  ),
                 ],
               ),
             ),
-          ),
-          
-          // Next Button (integrated)
+          ],
+
+          Spacer(),
+
+          // Next Button
           if (widget.showNextButton)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 50), 
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _canProceed() && !_isLoading ? _saveAndNext : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF007AFF),
-                    disabledBackgroundColor: Colors.grey[700],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    elevation: 0,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: widget.userData.hasCompleteBodyMeasurements 
+                    ? widget.onNext 
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.userData.hasCompleteBodyMeasurements 
+                      ? Colors.white 
+                      : Colors.grey[600],
+                  foregroundColor: widget.userData.hasCompleteBodyMeasurements 
+                      ? Color(0xFF1A1A2E) 
+                      : Colors.grey[400],
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: _isLoading 
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Saving...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        'Next',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Continue',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -331,35 +279,13 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
     );
   }
 
-  // Check if can proceed (height dan weight ada)
-  bool _canProceed() {
-    return heightController.text.trim().isNotEmpty && 
-           weightController.text.trim().isNotEmpty &&
-           double.tryParse(heightController.text.trim()) != null &&
-           double.tryParse(weightController.text.trim()) != null;
-  }
-
-  Color _getBMIColor() {
-    final category = widget.userData.bmiCategory;
-    switch (category) {
-      case 'Normal weight':
-        return Colors.green;
-      case 'Underweight':
-        return Colors.blue;
-      case 'Overweight':
-        return Colors.orange;
-      case 'Obese':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildInputField({
+  Widget _buildMeasurementInput({
     required String label,
     required TextEditingController controller,
     required String unit,
+    required VoidCallback onUnitToggle,
     required Function(String) onChanged,
+    required TextInputType keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,61 +293,62 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
         ),
-        SizedBox(height: 12),
+        SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: Container(
-                height: 50,
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  enabled: !_isLoading,
-                  onChanged: onChanged,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
+              child: TextFormField(
+                controller: controller,
+                keyboardType: keyboardType,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Enter $label',
+                  hintStyle: TextStyle(color: Colors.grey[500]),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                   ),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Color(0xFF363B59),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    hintText: 'Enter ${label.toLowerCase().split(' ').last}',
-                    hintStyle: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 14,
-                    ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                   ),
                 ),
+                onChanged: onChanged,
               ),
             ),
             SizedBox(width: 12),
             GestureDetector(
-              onTap: _isLoading ? null : () => _showUnitSelector(context, unit, label),
+              onTap: onUnitToggle,
               child: Container(
-                height: 50,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: _isLoading ? Colors.grey[600] : Color(0xFF007AFF),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
-                child: Center(
-                  child: Text(
-                    unit,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                child: Text(
+                  unit,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -432,59 +359,15 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
     );
   }
 
-  void _showUnitSelector(BuildContext context, String currentUnit, String label) {
-    List<String> units;
-    if (label.toLowerCase().contains('tall')) {
-      units = ['cm', 'ft'];
+  Color _getBMIColor(double bmi) {
+    if (bmi < 18.5) {
+      return Colors.blue[300]!;
+    } else if (bmi >= 18.5 && bmi < 25) {
+      return Colors.green[300]!;
+    } else if (bmi >= 25 && bmi < 30) {
+      return Colors.orange[300]!;
     } else {
-      units = ['kg', 'lbs'];
+      return Colors.red[300]!;
     }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Color(0xFF1A1A2E),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Select Unit',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 20),
-            ...units.map((unit) => ListTile(
-              title: Text(
-                unit,
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: currentUnit == unit 
-                ? Icon(Icons.check, color: Color(0xFF007AFF))
-                : null,
-              onTap: () {
-                if (label.toLowerCase().contains('tall')) {
-                  widget.userData.updateHeightUnit(unit);
-                } else {
-                  widget.userData.updateWeightUnit(unit);
-                }
-                widget.onChanged();
-                Navigator.pop(context);
-              },
-            )).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    heightController.dispose();
-    weightController.dispose();
-    super.dispose();
   }
 }

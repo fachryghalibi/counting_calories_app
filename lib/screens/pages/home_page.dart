@@ -1,3 +1,4 @@
+import 'package:aplikasi_counting_calories/screens/pages/food_scan_page.dart';
 import 'package:flutter/material.dart';
 import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart';
 import 'package:aplikasi_counting_calories/widgets/navigation_bar_bottom.dart';
@@ -53,7 +54,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       case 1:
         return _buildPlaceholderPage('Dashboard');
       case 2:
-        return _buildPlaceholderPage('Record');
+        return FoodScanPage();
       case 3:
         return _buildPlaceholderPage('History');
       case 4:

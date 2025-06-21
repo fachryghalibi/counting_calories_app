@@ -1,3 +1,4 @@
+import 'package:aplikasi_counting_calories/screens/pages/food_scan_page.dart';
 import 'package:aplikasi_counting_calories/screens/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterScreen(),
         '/onboarding': (context) => OnboardingFlow(),
         '/home': (context) => MainNavigationWrapper(),
+        '/scan': (context) => FoodScanPage(),
         // Tambahkan route lain sesuai kebutuhan
         // '/profile': (context) => ProfilePage(),
       },

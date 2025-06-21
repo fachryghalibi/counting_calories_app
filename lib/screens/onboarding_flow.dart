@@ -19,9 +19,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   PageController _pageController = PageController();
   int currentPage = 0;
   UserData userData = UserData();
-  bool _isLoading = false; // Add loading state
+  bool _isLoading = false;
 
-  // Updated to match actual pages in correct order
   final List<String> pageTitles = [
     'Personal Info',
     'Your Body', 
@@ -72,12 +71,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     onNext: _nextPage,
                     showNextButton: true,
                   ),
-                  // ✅ FIXED: Use ActivityLevelPage without external button
                   ActivityLevelPage(
                     userData: userData,
                     onChanged: () => setState(() {}),
-                    onNext: _saveActivityLevelAndComplete, // ✅ FIXED: Custom callback
-                    showNextButton: true, // ✅ Use internal ActivityLevelPage button
+                    onNext: _saveActivityLevelAndComplete,
+                    showNextButton: true,
                   ),
                 ],
               ),
@@ -108,7 +106,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
-  // ✅ FIXED: Function specifically for saving activity level and completing onboarding
   Future<void> _saveActivityLevelAndComplete() async {
     if (_isLoading) return;
     
@@ -119,12 +116,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     try {
       print('🔄 Starting save activity level and complete onboarding...');
       
-      // ✅ FIXED: Validate activity level (now int instead of string)
       if (userData.activityLevel == null) {
         throw Exception('Please select an activity level');
       }
 
-      // ✅ FIXED: Activity level is already an integer, no conversion needed
       int activityLevelValue = userData.activityLevel!;
       
       if (activityLevelValue < 1 || activityLevelValue > 5) {
@@ -133,7 +128,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       print('📊 Activity level integer: $activityLevelValue');
 
-      // ✅ FIXED: Save activity level to database
       final result = await ActivityLevelService.updateActivityLevel(
         activityLevel: activityLevelValue,
       );
@@ -142,8 +136,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       if (result['success']) {
         print('✅ Activity level saved to database successfully');
-        
-        // ✅ FIXED: Complete onboarding after successful save
         await _completeOnboarding();
       } else {
         throw Exception(result['message'] ?? 'Failed to save activity level');
@@ -161,108 +153,108 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
-  // ✅ NEW: Function to update onboarding completion status in database
-  // ✅ FIXED: Add completedOnboarding to request body
-Future<bool> _updateOnboardingStatusInDatabase() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('id') ?? 0;
-    
-    // Debug: Print all stored keys
-    print('🔍 Debug: All SharedPreferences keys:');
-    final keys = prefs.getKeys();
-    for (String key in keys) {
-      if (key.toLowerCase().contains('token') || key.toLowerCase().contains('auth')) {
-        print('   - $key: ${prefs.getString(key)}');
+  // ✅ FIXED: Updated to properly handle double values
+  Future<bool> _updateOnboardingStatusInDatabase() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('id') ?? 0;
+      
+      // Debug: Print all stored keys
+      print('🔍 Debug: All SharedPreferences keys:');
+      final keys = prefs.getKeys();
+      for (String key in keys) {
+        if (key.toLowerCase().contains('token') || key.toLowerCase().contains('auth')) {
+          print('   - $key: ${prefs.getString(key)}');
+        }
       }
-    }
-    
-    // Try different token key possibilities
-    String? token = prefs.getString('token') ?? 
-                   prefs.getString('auth_token') ?? 
-                   prefs.getString('access_token') ??
-                   prefs.getString('jwt_token') ??
-                   prefs.getString('api_token');
+      
+      // Try different token key possibilities
+      String? token = prefs.getString('token') ?? 
+                     prefs.getString('auth_token') ?? 
+                     prefs.getString('access_token') ??
+                     prefs.getString('jwt_token') ??
+                     prefs.getString('api_token');
 
-    print('🔄 User ID: $userId');
-    print('🔄 Token found: ${token != null ? "Yes (${token.length} chars)" : "No"}');
+      print('🔄 User ID: $userId');
+      print('🔄 Token found: ${token != null ? "Yes (${token.length} chars)" : "No"}');
 
-    if (userId == 0) {
-      print('❌ Error: Missing user ID');
+      if (userId == 0) {
+        print('❌ Error: Missing user ID');
+        return false;
+      }
+
+      const String baseUrl = 'http://10.0.2.2:3000';
+      final String url = '$baseUrl/user/setupAccount';
+
+      print('🔄 Calling setupAccount endpoint: $url');
+
+      // Create headers
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header if token available
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+        print('🔄 Using token authentication');
+      } else {
+        print('🔄 No token found, proceeding without authentication header');
+      }
+
+      // ✅ FIXED: Direct double values from userData
+      final requestBody = {
+        'userId': userId,
+        'username': userData.firstName.isNotEmpty ? userData.firstName : 'User',
+        'gender': userData.gender,
+        'height': userData.height,        // Already double
+        'weight': userData.weight,        // Already double
+        'activityLevel': userData.activityLevel,
+        'completedOnboarding': 1,
+      };
+
+      // Handle dateOfBirth
+      if (userData.birthDate != null) {
+        requestBody['dateOfBirth'] = userData.birthDate!.toIso8601String().split('T')[0];
+      } else if (userData.birthYear != null && userData.birthMonth != null && userData.birthDay != null) {
+        final dateStr = '${userData.birthYear!.toString().padLeft(4, '0')}-${userData.birthMonth!.toString().padLeft(2, '0')}-${userData.birthDay!.toString().padLeft(2, '0')}';
+        requestBody['dateOfBirth'] = dateStr;
+      }
+
+      print('🔄 Request body: ${json.encode(requestBody)}');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode(requestBody),
+      );
+
+      print('🔄 Response status: ${response.statusCode}');
+      print('🔄 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Onboarding status updated successfully in database');
+        return true;
+      } else if (response.statusCode == 500 && response.body.contains('Setup for this account is already completed')) {
+        print('✅ Onboarding already completed for this account');
+        return true;
+      } else {
+        print('❌ Failed to update onboarding status: ${response.statusCode}');
+        print('❌ Response body: ${response.body}');
+        return false;
+      }
+
+    } catch (e) {
+      print('❌ Error calling setupAccount endpoint: $e');
       return false;
     }
-
-    const String baseUrl = 'http://10.0.2.2:3000';
-    final String url = '$baseUrl/user/setupAccount';
-
-    print('🔄 Calling setupAccount endpoint: $url');
-
-    // Create headers
-    Map<String, String> headers = {
-      'Content-Type': 'application/json',
-    };
-
-    // Add Authorization header if token available
-    if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
-      print('🔄 Using token authentication');
-    } else {
-      print('🔄 No token found, proceeding without authentication header');
-    }
-
-    // ✅ FIXED: Add completedOnboarding field
-    final requestBody = {
-      'userId': userId,
-      'username': userData.firstName.isNotEmpty ? userData.firstName : 'User',
-      'gender': userData.gender,
-      'height': double.tryParse(userData.height) ?? 0.0,
-      'weight': double.tryParse(userData.weight) ?? 0.0,
-      'activityLevel': userData.activityLevel,
-      'completedOnboarding': 1, // ✅ ADD THIS LINE
-    };
-
-    // Handle dateOfBirth
-    if (userData.birthDate != null) {
-      requestBody['dateOfBirth'] = userData.birthDate!.toIso8601String().split('T')[0];
-    } else if (userData.birthYear != null && userData.birthMonth != null && userData.birthDay != null) {
-      final dateStr = '${userData.birthYear!.toString().padLeft(4, '0')}-${userData.birthMonth!.toString().padLeft(2, '0')}-${userData.birthDay!.toString().padLeft(2, '0')}';
-      requestBody['dateOfBirth'] = dateStr;
-    }
-
-    print('🔄 Request body: ${json.encode(requestBody)}');
-
-    final response = await http.post(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode(requestBody),
-    );
-
-    print('🔄 Response status: ${response.statusCode}');
-    print('🔄 Response body: ${response.body}');
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print('✅ Onboarding status updated successfully in database');
-      return true;
-    } else if (response.statusCode == 500 && response.body.contains('Setup for this account is already completed')) {
-      print('✅ Onboarding already completed for this account');
-      return true;
-    } else {
-      print('❌ Failed to update onboarding status: ${response.statusCode}');
-      print('❌ Response body: ${response.body}');
-      return false;
-    }
-
-  } catch (e) {
-    print('❌ Error calling setupAccount endpoint: $e');
-    return false;
   }
-}
 
+  // ✅ FIXED: Updated to save double values properly
   Future<void> _completeOnboarding() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // ✅ FIXED: Get user ID to create user-specific keys
+      // Get user ID to create user-specific keys
       final userId = prefs.getInt('id') ?? 0;
       
       print('🔄 Completing onboarding...');
@@ -275,7 +267,7 @@ Future<bool> _updateOnboardingStatusInDatabase() async {
         return;
       }
 
-      // ✅ NEW: Update onboarding status in database first
+      // Update onboarding status in database first
       print('🔄 Updating onboarding status in database...');
       final dbUpdateSuccess = await _updateOnboardingStatusInDatabase();
       
@@ -284,20 +276,36 @@ Future<bool> _updateOnboardingStatusInDatabase() async {
         return;
       }
 
-      // ✅ FIXED: Set onboarding_completed based on user ID (local storage)
+      // Set onboarding_completed flags
       await prefs.setBool('onboarding_completed_$userId', true);
+      await prefs.setBool('completedOnboarding', true);
       
       print('✅ Onboarding completed successfully for user $userId');
-      print('✅ onboarding_completed_$userId set to true');
-      print('✅ Database onboarding status updated');
       
-      // Save onboarding data with user-specific keys (optional)
+      // ✅ FIXED: Direct double values, no conversion needed
+      final heightValue = userData.height;
+      final weightValue = userData.weight;
+      final goalWeightValue = userData.goalWeight;
+      
+      // Validate values
+      if (heightValue <= 0 || weightValue <= 0) {
+        _showErrorDialog('Invalid height or weight values. Please check your input.');
+        return;
+      }
+      
+      print('💾 Saving data to SharedPreferences...');
+      print('   - Height: $heightValue (${heightValue.runtimeType})');
+      print('   - Weight: $weightValue (${weightValue.runtimeType})');
+      print('   - Goal Weight: $goalWeightValue (${goalWeightValue.runtimeType})');
+      
+      // ✅ FIXED: Save as double using setDouble method
+      // Save onboarding data with user-specific keys
       await prefs.setString('gender_$userId', userData.gender);
-      await prefs.setString('height_$userId', userData.height);
-      await prefs.setString('weight_$userId', userData.weight);
-      await prefs.setString('goalWeight_$userId', userData.goalWeight);
+      await prefs.setDouble('height_$userId', heightValue);
+      await prefs.setDouble('weight_$userId', weightValue);
+      await prefs.setDouble('goalWeight_$userId', goalWeightValue);
       
-      // ✅ FIXED: Save activity level as int (convert to string for SharedPreferences)
+      // Save activity level as int
       if (userData.activityLevel != null) {
         await prefs.setInt('activityLevel_$userId', userData.activityLevel!);
       }
@@ -313,13 +321,13 @@ Future<bool> _updateOnboardingStatusInDatabase() async {
       if (userData.birthMonth != null) await prefs.setInt('birthMonth_$userId', userData.birthMonth!);
       if (userData.birthYear != null) await prefs.setInt('birthYear_$userId', userData.birthYear!);
 
-      // ALSO update global data for compatibility (optional)
+      // ✅ FIXED: Update global data for compatibility - using setDouble
       await prefs.setString('gender', userData.gender);
-      await prefs.setString('height', userData.height);
-      await prefs.setString('weight', userData.weight);
-      await prefs.setString('goalWeight', userData.goalWeight);
+      await prefs.setDouble('height', heightValue);
+      await prefs.setDouble('weight', weightValue);
+      await prefs.setDouble('goalWeight', goalWeightValue);
       
-      // ✅ FIXED: Save activity level as int globally too
+      // Save activity level as int globally too
       if (userData.activityLevel != null) {
         await prefs.setInt('activityLevel', userData.activityLevel!);
       }
@@ -327,12 +335,28 @@ Future<bool> _updateOnboardingStatusInDatabase() async {
       await prefs.setString('heightUnit', userData.heightUnit ?? 'cm');
       await prefs.setString('weightUnit', userData.weightUnit ?? 'kg');
       
+      // Save birth date consistently
       if (userData.birthDate != null) {
+        await prefs.setString('dateOfBirth', userData.birthDate!.toIso8601String().split('T')[0]);
         await prefs.setString('birthDate', userData.birthDate!.toIso8601String());
       }
       if (userData.birthDay != null) await prefs.setInt('birthDay', userData.birthDay!);
       if (userData.birthMonth != null) await prefs.setInt('birthMonth', userData.birthMonth!);
       if (userData.birthYear != null) await prefs.setInt('birthYear', userData.birthYear!);
+
+      // Save firstName to full_name for consistency with login
+      if (userData.firstName.isNotEmpty) {
+        await prefs.setString('full_name', userData.firstName);
+        await prefs.setString('username_$userId', userData.firstName);
+      }
+
+      print('✅ All data saved successfully to SharedPreferences');
+      
+      // Verify saved data
+      print('🔍 Verifying saved data:');
+      print('   - Height saved: ${prefs.getDouble('height')} (${prefs.getDouble('height').runtimeType})');
+      print('   - Weight saved: ${prefs.getDouble('weight')} (${prefs.getDouble('weight').runtimeType})');
+      print('   - Goal Weight saved: ${prefs.getDouble('goalWeight')} (${prefs.getDouble('goalWeight').runtimeType})');
 
       // Show success dialog
       if (context.mounted) {
@@ -429,9 +453,9 @@ extension UserDataDebug on UserData {
     return '''
     - firstName: $firstName
     - gender: $gender
-    - height: $height ($heightUnit)
-    - weight: $weight ($weightUnit)
-    - goalWeight: $goalWeight
+    - height: $height ($heightUnit) [${height.runtimeType}]
+    - weight: $weight ($weightUnit) [${weight.runtimeType}]
+    - goalWeight: $goalWeight [${goalWeight.runtimeType}]
     - activityLevel: $activityLevel
     - birthDay: $birthDay
     - birthMonth: $birthMonth

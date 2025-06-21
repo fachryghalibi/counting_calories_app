@@ -15,6 +15,17 @@ class _SettingsPageState extends State<SettingsPage> {
   String _userEmail = ' ';
   bool _isMetric = true;
   bool _isDeletingAccount = false;
+  int _userId = 0;
+  String _userDateOfBirth = '';
+  String _userGender = '';
+  double _userHeight = 0.0;
+  double _userWeight = 0.0;
+  int _userActivityLevel = 0;
+  bool _userActive = false;
+  String _userProfileImage = '';
+  bool _isLoggedIn = false;
+  bool _completedOnboarding = false;
+  String _authToken = '';
 
   @override
   void initState() {
@@ -39,12 +50,11 @@ Future<void> _loadUserData() async {
       _userEmail = prefs.getString('email') ?? '';
       
       // Load additional user data
-      final userCreatedAt = prefs.getString('created_at') ?? '';
       final userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
       final userGender = prefs.getString('gender') ?? '';
       final userHeight = prefs.getDouble('height') ?? 0.0;
-      final userWeight = prefs.getDouble('weight') ?? 0.0;
-      final userActivityLevel = prefs.getInt('activityLevel') ?? '';
+      // final userWeight = prefs.getDouble('weight') ?? 0.0;
+      final userActivityLevel = prefs.getInt('activityLevel') ?? 0;
       final userActive = prefs.getBool('active') ?? false;
       final userProfileImage = prefs.getString('profileImage') ?? '';
       
@@ -54,26 +64,25 @@ Future<void> _loadUserData() async {
       final authToken = prefs.getString('auth_token') ?? '';
       
       // Load saved credentials data
-      final savedEmail = prefs.getString('saved_email') ?? '';
-      final savedPassword = prefs.getString('saved_password') ?? '';
-      final rememberMe = prefs.getBool('remember_me') ?? false;
+      // final savedEmail = prefs.getString('saved_email') ?? '';
+      // final savedPassword = prefs.getString('saved_password') ?? '';
+      // final rememberMe = prefs.getBool('remember_me') ?? false;
       
-      // You can assign these to class variables if needed
-      // Example:
-      // _userId = userId;
-      // _userCreatedAt = userCreatedAt;
-      // _userDateOfBirth = userDateOfBirth;
-      // _userGender = userGender;
-      // _userHeight = userHeight;
+      // Assign to class variables
+      _userId = userId;
+      _userDateOfBirth = userDateOfBirth;
+      _userGender = userGender;
+      _userHeight = userHeight;
       // _userWeight = userWeight;
-      // _userActivityLevel = userActivityLevel;
-      // _userActive = userActive;
-      // _userProfileImage = userProfileImage;
-      // _isLoggedIn = isLoggedIn;
-      // _completedOnboarding = completedOnboarding;
-      // _authToken = authToken;
+      _userActivityLevel = userActivityLevel;
+      _userActive = userActive;
+      _userProfileImage = userProfileImage;
+      _isLoggedIn = isLoggedIn;
+      _completedOnboarding = completedOnboarding;
+      _authToken = authToken;
     });
   }
+
   
   // Debug print to verify all data loading
   print('🔍 === LOADING ALL USER DATA ===');
@@ -83,7 +92,7 @@ Future<void> _loadUserData() async {
   print('🔍 Email: ${prefs.getString('email')}');
   print('🔍 Created At: ${prefs.getString('created_at')}');
   print('🔍 Date of Birth: ${prefs.getString('dateOfBirth')}');
-  print('🔍 Gender: ${prefs.getString('gender')}');
+  // print('🔍 Gender: ${prefs.getDouble('gender')}');
   print('🔍 Height: ${prefs.getDouble('height')}');
   print('🔍 Weight: ${prefs.getDouble('weight')}');
   print('🔍 Activity Level: ${prefs.getInt('activityLevel')}');

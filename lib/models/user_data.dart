@@ -5,22 +5,22 @@ class UserData {
   List<String> selectedHabits = [];
   bool? wantsWeeklyMealPlan;
   List<String> selectedGoals = [];
-  int? activityLevel; // Changed from String? to int?
+  int? activityLevel;
   String gender = '';
   int? birthDay;
   int? birthMonth;
   int? birthYear;
   String weeklyGoal = '';
   
-  // Additional body measurements
-  String height = ''; // in cm or feet/inches format
-  String weight = ''; // in kg or lbs
-  String goalWeight = ''; // target weight in kg or lbs
+  // Additional body measurements - now consistently using double
+  double height = 0.0; // in cm or feet/inches format
+  double weight = 0.0; // in kg or lbs
+  double goalWeight = 0.0; // target weight in kg or lbs - changed to double
   String? heightUnit = 'cm'; // 'cm' or 'ft'
   String? weightUnit = 'kg'; // 'kg' or 'lbs'
   
-  // ✅ TAMBAHAN: Field untuk onboarding status
-  bool completedOnboarding = false; // Default false untuk user baru
+  // Field untuk onboarding status
+  bool completedOnboarding = false;
   
   // Default constructor
   UserData({
@@ -36,18 +36,18 @@ class UserData {
     this.birthMonth,
     this.birthYear,
     this.weeklyGoal = '',
-    this.height = '',
-    this.weight = '',
-    this.goalWeight = '',
+    this.height = 0.0,
+    this.weight = 0.0,
+    this.goalWeight = 0.0, // changed to double
     this.heightUnit = 'cm',
     this.weightUnit = 'kg',
-    this.completedOnboarding = false, // ✅ TAMBAHAN: Default false
+    this.completedOnboarding = false,
   }) : selectedHabits = selectedHabits ?? [],
        selectedGoals = selectedGoals ?? [];
   
-  // BMI related
+  // BMI related - updated to work with double values
   double? get bmi {
-    if (height.isEmpty || weight.isEmpty) return null;
+    if (height <= 0 || weight <= 0) return null;
     
     try {
       double heightInMeters;
@@ -55,24 +55,17 @@ class UserData {
       
       // Convert height to meters
       if (heightUnit == 'cm') {
-        heightInMeters = double.parse(height) / 100;
+        heightInMeters = height / 100;
       } else {
-        // Assuming format like "5'8" or "5.8"
-        if (height.contains("'")) {
-          List<String> parts = height.split("'");
-          double feet = double.parse(parts[0]);
-          double inches = parts.length > 1 ? double.parse(parts[1].replaceAll('"', '')) : 0;
-          heightInMeters = (feet * 12 + inches) * 0.0254;
-        } else {
-          heightInMeters = double.parse(height) * 0.3048; // feet to meters
-        }
+        // For feet, assuming decimal format (e.g., 5.8 feet)
+        heightInMeters = height * 0.3048; // feet to meters
       }
       
       // Convert weight to kg
       if (weightUnit == 'kg') {
-        weightInKg = double.parse(weight);
+        weightInKg = weight;
       } else {
-        weightInKg = double.parse(weight) * 0.453592; // lbs to kg
+        weightInKg = weight * 0.453592; // lbs to kg
       }
       
       return weightInKg / (heightInMeters * heightInMeters);
@@ -123,7 +116,7 @@ class UserData {
     }
   }
 
-  void updateActivityLevel(int level) { // Changed parameter type from String to int
+  void updateActivityLevel(int level) {
     activityLevel = level;
   }
 
@@ -147,16 +140,16 @@ class UserData {
     weeklyGoal = goal;
   }
   
-  // New methods for body measurements
-  void updateHeight(String newHeight) {
+  // Updated methods for body measurements - now accepting double values
+  void updateHeight(double newHeight) {
     height = newHeight;
   }
   
-  void updateWeight(String newWeight) {
+  void updateWeight(double newWeight) {
     weight = newWeight;
   }
   
-  void updateGoalWeight(String newGoalWeight) {
+  void updateGoalWeight(double newGoalWeight) {
     goalWeight = newGoalWeight;
   }
   
@@ -168,7 +161,7 @@ class UserData {
     weightUnit = unit;
   }
 
-  // ✅ TAMBAHAN: Method untuk update onboarding status
+  // Method untuk update onboarding status
   void updateOnboardingStatus(bool completed) {
     completedOnboarding = completed;
   }
@@ -199,18 +192,18 @@ class UserData {
     return DateTime(birthYear!, birthMonth!, birthDay!);
   }
   
-  // Validation methods
-  bool get hasValidHeight => height.isNotEmpty;
-  bool get hasValidWeight => weight.isNotEmpty;
-  bool get hasValidGoalWeight => goalWeight.isNotEmpty;
+  // Updated validation methods for double values
+  bool get hasValidHeight => height > 0;
+  bool get hasValidWeight => weight > 0;
+  bool get hasValidGoalWeight => goalWeight > 0;
   bool get hasValidPersonalInfo => firstName.isNotEmpty;
-  bool get hasValidActivityLevel => activityLevel != null; // Updated validation
+  bool get hasValidActivityLevel => activityLevel != null;
   
   // Check if body measurements are complete
   bool get hasCompleteBodyMeasurements => 
       hasValidHeight && hasValidWeight;
 
-  // ✅ TAMBAHAN: Check if onboarding is completed
+  // Check if onboarding is completed
   bool get hasCompletedOnboarding => completedOnboarding;
 
   Map<String, dynamic> toMap() {
@@ -232,11 +225,11 @@ class UserData {
       'goalWeight': goalWeight,
       'heightUnit': heightUnit,
       'weightUnit': weightUnit,
-      'completedOnboarding': completedOnboarding, // ✅ TAMBAHAN
+      'completedOnboarding': completedOnboarding,
     };
   }
   
-  // Factory constructor from map
+  // Factory constructor from map - updated to handle double conversion
   factory UserData.fromMap(Map<String, dynamic> map) {
     final userData = UserData();
     userData.id = map['id'];
@@ -245,15 +238,18 @@ class UserData {
     userData.selectedHabits = List<String>.from(map['selectedHabits'] ?? []);
     userData.wantsWeeklyMealPlan = map['wantsWeeklyMealPlan'];
     userData.selectedGoals = List<String>.from(map['selectedGoals'] ?? []);
-    userData.activityLevel = map['activityLevel']; // No type conversion needed now
+    userData.activityLevel = map['activityLevel'];
     userData.gender = map['gender'] ?? '';
     userData.birthDay = map['birthDay'];
     userData.birthMonth = map['birthMonth'];
     userData.birthYear = map['birthYear'];
     userData.weeklyGoal = map['weeklyGoal'] ?? '';
-    userData.height = map['height'] ?? '';
-    userData.weight = map['weight'] ?? '';
-    userData.goalWeight = map['goalWeight'] ?? '';
+    
+    // Handle double conversion for height, weight, and goalWeight
+    userData.height = (map['height'] ?? 0.0).toDouble();
+    userData.weight = (map['weight'] ?? 0.0).toDouble();
+    userData.goalWeight = (map['goalWeight'] ?? 0.0).toDouble();
+    
     userData.heightUnit = map['heightUnit'] ?? 'cm';
     userData.weightUnit = map['weightUnit'] ?? 'kg';
     userData.completedOnboarding = map['completedOnboarding'] ?? false; 

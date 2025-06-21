@@ -38,6 +38,8 @@ dependencies:
   country_picker: ^2.0.21
   shared_preferences: ^2.5.3
   http: ^1.4.0
+  path_provider: ^2.1.5
+  camera: ^0.11.1
 
 dev_dependencies:
   flutter_test:
