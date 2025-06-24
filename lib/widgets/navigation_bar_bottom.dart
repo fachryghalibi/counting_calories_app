@@ -28,8 +28,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey[400],
         elevation: 0,
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        selectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         items: [
           BottomNavigationBarItem(
             icon: Container(
@@ -47,32 +49,43 @@ class CustomBottomNavigationBar extends StatelessWidget {
           ),
           BottomNavigationBarItem(
             icon: Container(
-              padding: EdgeInsets.all(8),
+              width: 30,
+              height: 40,
               decoration: BoxDecoration(
-                color: currentIndex == 1 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
+                color: currentIndex == 1
+                    ? Colors.blue
+                    : Colors.transparent,
+                border: Border.all(
+                  color: currentIndex == 1
+                      ? Colors.blue
+                      : Colors.grey[400]!,
+                  width: 2,
+                ),
               ),
               child: Icon(
-                Icons.dashboard_outlined,
-                color: currentIndex == 1 ? Colors.white : Colors.grey[400],
+                Icons.add,
+                size: 20,
+                color: currentIndex == 1
+                    ? Colors.white
+                    : Colors.grey[400],
               ),
             ),
-            label: 'Dashboard',
+            label: 'Record',
           ),
           BottomNavigationBarItem(
             icon: Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: currentIndex == 2 ? Colors.blue : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 24,
+                Icons.history_outlined,
+                color: currentIndex == 2 ? Colors.white : Colors.grey[400],
               ),
             ),
-            label: 'Record',  
+            label: 'History',
           ),
           BottomNavigationBarItem(
             icon: Container(
@@ -82,22 +95,8 @@ class CustomBottomNavigationBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.history_outlined,
-                color: currentIndex == 3 ? Colors.white : Colors.grey[400],
-              ),
-            ),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: currentIndex == 4 ? Colors.blue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
                 Icons.settings_outlined,
-                color: currentIndex == 4 ? Colors.white : Colors.grey[400],
+                color: currentIndex == 3 ? Colors.white : Colors.grey[400],
               ),
             ),
             label: 'Settings',

@@ -376,15 +376,13 @@ Future<void> _loadUserData() async {
             child: Column(
               children: [
                 _buildProfileCard(),
-                SizedBox(height: 20),
+                SizedBox(height: 24),
                 _buildPreferencesSection(),
-                SizedBox(height: 20),
+                SizedBox(height: 24),
                 _buildAccountSection(),
-                SizedBox(height: 20),
-                _buildUnitSection(),
-                SizedBox(height: 20),
+                SizedBox(height: 24),
                 _buildHelpSection(),
-                SizedBox(height: 20),
+                SizedBox(height: 32),
                 _buildLogoutButton(),
                 SizedBox(height: 20),
               ],
@@ -526,6 +524,7 @@ Future<void> _loadUserData() async {
           subtitle: 'Customize your daily nutrition targets',
           onTap: () {},
         ),
+        SizedBox(height: 12),
         _buildSettingItem(
           icon: Icons.directions_run_outlined,
           title: 'Activity Level',
@@ -541,18 +540,6 @@ Future<void> _loadUserData() async {
       title: 'Account',
       children: [
         _buildSettingItem(
-          icon: Icons.tune_outlined,
-          title: 'Calibration',
-          subtitle: 'Adjust app settings for accuracy',
-          onTap: () {},
-        ),
-        _buildSettingItem(
-          icon: Icons.download_outlined,
-          title: 'Export My Data',
-          subtitle: 'Download your personal data',
-          onTap: () {},
-        ),
-        _buildSettingItem(
           icon: Icons.delete_outline,
           title: 'Delete Account',
           subtitle: 'Permanently delete your account',
@@ -563,118 +550,61 @@ Future<void> _loadUserData() async {
     );
   }
 
-  Widget _buildUnitSection() {
+  Widget _buildHelpSection() {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Color(0xFF2D2D44),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+      child: GestureDetector(
+        onTap: () {},
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.help_outline,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
-            child: Icon(
-              Icons.straighten_outlined,
-              color: Colors.white,
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Help & FAQ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    'Get help and find answers',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[400],
               size: 20,
             ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Unit',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Choose measurement system',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isMetric = true;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _isMetric ? Colors.blue : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Metric',
-                      style: TextStyle(
-                        color: _isMetric ? Colors.white : Colors.grey[400],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isMetric = false;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: !_isMetric ? Colors.blue : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Imperial',
-                      style: TextStyle(
-                        color: !_isMetric ? Colors.white : Colors.grey[400],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildHelpSection() {
-    return _buildSettingItem(
-      icon: Icons.help_outline,
-      title: 'Help & FAQ',
-      subtitle: 'Get help and find answers',
-      onTap: () {},
-      showContainer: true,
     );
   }
 
@@ -730,10 +660,7 @@ Future<void> _loadUserData() async {
             ),
           ),
           SizedBox(height: 16),
-          ...children.map((child) => Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: child,
-              )),
+          ...children,
         ],
       ),
     );
@@ -745,68 +672,54 @@ Future<void> _loadUserData() async {
     required String subtitle,
     required VoidCallback onTap,
     bool isDestructive = false,
-    bool showContainer = false,
   }) {
-    Widget content = Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            color: isDestructive ? Colors.red : Colors.white,
-            size: 20,
-          ),
-        ),
-        SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isDestructive ? Colors.red : Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Icon(
-          Icons.chevron_right,
-          color: Colors.grey[400],
-          size: 20,
-        ),
-      ],
-    );
-
-    if (showContainer) {
-      content = Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Color(0xFF2D2D44),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: content,
-      );
-    }
-
     return GestureDetector(
       onTap: onTap,
-      child: content,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: isDestructive ? Colors.red : Colors.white,
+              size: 20,
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isDestructive ? Colors.red : Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            color: Colors.grey[400],
+            size: 20,
+          ),
+        ],
+      ),
     );
   }
 }

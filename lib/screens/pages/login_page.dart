@@ -131,46 +131,68 @@ Future<void> _checkSession() async {
   @override
   Widget build(BuildContext context) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     
     return Scaffold(
       backgroundColor: Color(0xFF1A1A2E),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: keyboardHeight > 0 ? BouncingScrollPhysics() : NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
+        child: Center(
+          child: SingleChildScrollView(
+            physics: keyboardHeight > 0 ? BouncingScrollPhysics() : NeverScrollableScrollPhysics(),
+            child: Container(
+              width: screenWidth,
+              constraints: BoxConstraints(
+                minHeight: screenHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.08, // 8% dari lebar layar
+                  vertical: 20,
                 ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 40),
-                      _buildHeader(),
-                      SizedBox(height: 40),
-                      _buildLoginForm(),
-                      SizedBox(height: 16),
-                      _buildRememberMeSection(),
-                      SizedBox(height: 24),
-                      _buildLoginButton(),
-                      SizedBox(height: 16),
-                      _buildForgotPasswordButton(),
-                      SizedBox(height: 24),
-                      _buildDivider(),
-                      SizedBox(height: 20),
-                      _buildSocialLoginButtons(),
-                      Spacer(),
-                      _buildSignUpSection(),
-                      SizedBox(height: 20),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Top spacer untuk balance
+                    SizedBox(height: screenHeight * 0.05),
+                    
+                    // Header section
+                    _buildHeader(),
+                    
+                    SizedBox(height: screenHeight * 0.06),
+                    
+                    // Form section
+                    _buildLoginForm(),
+                    
+                    SizedBox(height: 20),
+                    
+                    // Remember me section
+                    _buildRememberMeSection(),
+                    
+                    SizedBox(height: 32),
+                    
+                    // Login button
+                    _buildLoginButton(),
+                    
+                    SizedBox(height: 20),
+                    
+                    // Forgot password
+                    _buildForgotPasswordButton(),
+                    
+                    // Flexible spacer
+                    SizedBox(height: screenHeight * 0.08),
+                    
+                    // Sign up section
+                    _buildSignUpSection(),
+                    
+                    // Bottom spacer untuk balance
+                    SizedBox(height: screenHeight * 0.03),
+                  ],
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -178,23 +200,27 @@ Future<void> _checkSession() async {
 
   Widget _buildHeader() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Welcome Back',
+          'Welcome',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
+          textAlign: TextAlign.center,
         ),
-        SizedBox(height: 6),
+        SizedBox(height: 12),
         Text(
           'Sign in to continue your health journey',
           style: TextStyle(
             color: Colors.grey[400],
-            fontSize: 15,
+            fontSize: 16,
+            height: 1.4,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -206,7 +232,7 @@ Future<void> _checkSession() async {
       child: Column(
         children: [
           _buildEmailField(),
-          SizedBox(height: 16),
+          SizedBox(height: 20),
           _buildPasswordField(),
         ],
       ),
@@ -218,24 +244,24 @@ Future<void> _checkSession() async {
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white, fontSize: 16),
       decoration: InputDecoration(
         labelText: 'Email',
-        labelStyle: TextStyle(color: Colors.grey[400]),
-        prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[400]),
+        labelStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
+        prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[400], size: 22),
         filled: true,
         fillColor: Color(0xFF363B59),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Color(0xFF007AFF), width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.red, width: 1),
         ),
       ),
@@ -259,15 +285,16 @@ Future<void> _checkSession() async {
       obscureText: !_isPasswordVisible,
       textInputAction: TextInputAction.done,
       onFieldSubmitted: (_) => _isLoading ? null : _login(),
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white, fontSize: 16),
       decoration: InputDecoration(
         labelText: 'Password',
-        labelStyle: TextStyle(color: Colors.grey[400]),
-        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[400]),
+        labelStyle: TextStyle(color: Colors.grey[400], fontSize: 16),
+        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[400], size: 22),
         suffixIcon: IconButton(
           icon: Icon(
             _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
             color: Colors.grey[400],
+            size: 22,
           ),
           onPressed: () {
             setState(() {
@@ -277,17 +304,17 @@ Future<void> _checkSession() async {
         ),
         filled: true,
         fillColor: Color(0xFF363B59),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Color(0xFF007AFF), width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.red, width: 1),
         ),
       ),
@@ -306,7 +333,7 @@ Future<void> _checkSession() async {
     return Row(
       children: [
         Transform.scale(
-          scale: 0.9,
+          scale: 1.1,
           child: Checkbox(
             value: _rememberMe,
             onChanged: (value) {
@@ -318,14 +345,19 @@ Future<void> _checkSession() async {
             },
             activeColor: Color(0xFF007AFF),
             checkColor: Colors.white,
-            side: BorderSide(color: Colors.grey[400]!),
+            side: BorderSide(color: Colors.grey[400]!, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
         ),
+        SizedBox(width: 8),
         Text(
           'Remember me',
           style: TextStyle(
             color: Colors.grey[400],
-            fontSize: 14,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -333,34 +365,36 @@ Future<void> _checkSession() async {
   }
 
   Widget _buildLoginButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 52,
+      height: 56,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _login,
         style: ElevatedButton.styleFrom(
           backgroundColor: Color(0xFF007AFF),
           disabledBackgroundColor: Color(0xFF007AFF).withOpacity(0.6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
+          shadowColor: Colors.transparent,
         ),
         child: _isLoading
             ? SizedBox(
-                height: 20,
-                width: 20,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 2,
+                  strokeWidth: 2.5,
                 ),
               )
             : Text(
                 'Sign In',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
                 ),
               ),
       ),
@@ -517,13 +551,13 @@ Future<void> _checkSession() async {
       child: TextButton(
         onPressed: _isLoading ? null : _handleForgotPassword,
         style: TextButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
         child: Text(
           'Forgot Password?',
           style: TextStyle(
             color: _isLoading ? Colors.grey : Color(0xFF007AFF),
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -531,103 +565,9 @@ Future<void> _checkSession() async {
     );
   }
 
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: Colors.grey[600],
-            thickness: 1,
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 14,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Divider(
-            color: Colors.grey[600],
-            thickness: 1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSocialLoginButtons() {
-    return Column(
-      children: [
-        _buildSocialButton(
-          'Continue with Google',
-          Icons.g_mobiledata,
-          Colors.white,
-          Colors.black,
-          _handleGoogleLogin,
-        ),
-        SizedBox(height: 10),
-        _buildSocialButton(
-          'Continue with Apple',
-          Icons.apple,
-          Colors.black,
-          Colors.white,
-          _handleAppleLogin,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSocialButton(
-    String text,
-    IconData icon,
-    Color backgroundColor,
-    Color textColor,
-    VoidCallback onPressed,
-  ) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: OutlinedButton(
-        onPressed: _isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          disabledBackgroundColor: backgroundColor.withOpacity(0.6),
-          side: BorderSide(color: Colors.grey[600]!),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: _isLoading ? textColor.withOpacity(0.6) : textColor,
-              size: 20,
-            ),
-            SizedBox(width: 12),
-            Text(
-              text,
-              style: TextStyle(
-                color: _isLoading ? textColor.withOpacity(0.6) : textColor,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSignUpSection() {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -635,7 +575,7 @@ Future<void> _checkSession() async {
             "Don't have an account? ",
             style: TextStyle(
               color: Colors.grey[400],
-              fontSize: 14,
+              fontSize: 15,
             ),
           ),
           TextButton(
@@ -649,7 +589,7 @@ Future<void> _checkSession() async {
               'Sign Up',
               style: TextStyle(
                 color: _isLoading ? Colors.grey : Color(0xFF007AFF),
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -661,14 +601,6 @@ Future<void> _checkSession() async {
 
   void _handleForgotPassword() {
     // Implementasi forgot password
-  }
-
-  void _handleGoogleLogin() {
-    // Implementasi Google login
-  }
-
-  void _handleAppleLogin() {
-    // Implementasi Apple login
   }
 
   void _handleSignUp() {

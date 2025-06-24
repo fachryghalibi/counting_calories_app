@@ -59,7 +59,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   SizedBox(height: 20),
                   
-                  // Header
                   Text(
                     'Create your account',
                     style: TextStyle(
@@ -95,14 +94,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   _buildCreateAccountButton(),
                   SizedBox(height: 24),
                   
-                  // OR Divider
-                  _buildOrDivider(),
-                  SizedBox(height: 24),
-                  
-                  // Google Login Button
-                  _buildGoogleLoginButton(),
-                  SizedBox(height: 32),
-                  
                   // Terms and Privacy
                   _buildTermsAndPrivacy(),
                   SizedBox(height: 40),
@@ -134,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       textInputAction: TextInputAction.next,
       autocorrect: false,
       enableSuggestions: false,
-      enabled: !_isLoading, // Disable when loading
+      enabled: !_isLoading,
       style: TextStyle(
         color: Colors.white,
         fontSize: 16,
@@ -319,71 +310,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildOrDivider() {
-    return Row(
-      children: [
-        Expanded(child: Divider(color: Colors.white30, thickness: 1)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: TextStyle(
-              color: Colors.white60,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(child: Divider(color: Colors.white30, thickness: 1)),
-      ],
-    );
-  }
 
-  Widget _buildGoogleLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: OutlinedButton.icon(
-        onPressed: _isLoading ? null : _handleGoogleLogin, // Disable when loading
-        icon: Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Center(
-            child: Text(
-              'G',
-              style: TextStyle(
-                color: Color(0xFF4285F4),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ),
-        label: Text(
-          'Continue with Google',
-          style: TextStyle(
-            color: _isLoading ? Colors.grey : Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(
-            color: _isLoading ? Colors.grey : Colors.white30, 
-            width: 1.5
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          backgroundColor: Colors.transparent,
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildTermsAndPrivacy() {
     return Center(
@@ -473,14 +401,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _handleGoogleLogin() {
-    _showSnackBar(
-      message: 'Google login will be implemented soon',
-      isError: false,
-      icon: Icons.info_outline,
-      backgroundColor: Colors.orange,
-    );
-  }
+
 
   void _showSnackBar({
     required String message,

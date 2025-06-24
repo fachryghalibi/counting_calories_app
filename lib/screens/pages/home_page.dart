@@ -52,12 +52,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       case 0:
         return _buildHomePage();
       case 1:
-        return _buildPlaceholderPage('Dashboard');
-      case 2:
         return FoodScanPage();
-      case 3:
+      case 2:
         return _buildPlaceholderPage('History');
-      case 4:
+      case 3:
         return SettingsPage();
       default:
         return _buildHomePage();
