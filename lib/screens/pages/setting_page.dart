@@ -1,6 +1,8 @@
+import 'package:aplikasi_counting_calories/screens/pages/edit_profile_page.dart';
 import 'package:aplikasi_counting_calories/service/deactive_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -9,7 +11,7 @@ class SettingsPage extends StatefulWidget {
   _SettingsPageState createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
   bool _isLoading = false;
   String _userName = ' ';
   String _userEmail = ' ';
@@ -27,88 +29,228 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _completedOnboarding = false;
   String _authToken = '';
 
+  // Auto refresh variables
+  Timer? _refreshTimer;
+  Timer? _updateTimer; // Timer untuk update UI setiap detik
+  StreamSubscription<void>? _refreshStreamSubscription;
+  final StreamController<void> _refreshStreamController = StreamController<void>.broadcast();
+  static const Duration _refreshInterval = Duration(seconds: 1); // Refresh data setiap 30 detik
+  static const Duration _updateInterval = Duration(seconds: 1); // Update UI setiap 1 detik
+  bool _isAutoRefreshEnabled = true;
+  DateTime? _lastRefreshTime;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserData();
+    _startAutoRefresh();
+    _startUpdateTimer(); // Start timer untuk update UI
+    _setupRefreshListener();
   }
 
-Future<void> _loadUserData() async {
-  final prefs = await SharedPreferences.getInstance();
-  
-  if (mounted) {
-    setState(() {
-      // Get the current user ID first
-      final userId = prefs.getInt('id') ?? 0;
-      
-      // Load basic user information
-      _userName = prefs.getString('full_name') ?? 
-                 prefs.getString('username_$userId') ?? 
-                 prefs.getString('username') ?? 
-                 'User';
-      
-      _userEmail = prefs.getString('email') ?? '';
-      
-      // Load additional user data
-      final userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
-      final userGender = prefs.getString('gender') ?? '';
-      final userHeight = prefs.getDouble('height') ?? 0.0;
-      // final userWeight = prefs.getDouble('weight') ?? 0.0;
-      final userActivityLevel = prefs.getInt('activityLevel') ?? 0;
-      final userActive = prefs.getBool('active') ?? false;
-      final userProfileImage = prefs.getString('profileImage') ?? '';
-      
-      // Load session data
-      final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      final completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
-      final authToken = prefs.getString('auth_token') ?? '';
-      
-      // Load saved credentials data
-      // final savedEmail = prefs.getString('saved_email') ?? '';
-      // final savedPassword = prefs.getString('saved_password') ?? '';
-      // final rememberMe = prefs.getBool('remember_me') ?? false;
-      
-      // Assign to class variables
-      _userId = userId;
-      _userDateOfBirth = userDateOfBirth;
-      _userGender = userGender;
-      _userHeight = userHeight;
-      // _userWeight = userWeight;
-      _userActivityLevel = userActivityLevel;
-      _userActive = userActive;
-      _userProfileImage = userProfileImage;
-      _isLoggedIn = isLoggedIn;
-      _completedOnboarding = completedOnboarding;
-      _authToken = authToken;
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopAutoRefresh();
+    _stopUpdateTimer(); // Stop timer untuk update UI
+    _refreshStreamSubscription?.cancel();
+    _refreshStreamController.close();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        print('📱 App resumed - Starting auto refresh');
+        _startAutoRefresh();
+        _startUpdateTimer();
+        _loadUserData();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        print('📱 App paused/inactive - Stopping auto refresh');
+        _stopAutoRefresh();
+        _stopUpdateTimer();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _stopAutoRefresh();
+        _stopUpdateTimer();
+        break;
+    }
+  }
+
+  // Setup listener untuk manual refresh
+  void _setupRefreshListener() {
+    _refreshStreamSubscription = _refreshStreamController.stream.listen((_) {
+      if (mounted) {
+        _loadUserData();
+      }
     });
   }
 
-  
-  // Debug print to verify all data loading
-  print('🔍 === LOADING ALL USER DATA ===');
-  print('🔍 User ID: ${prefs.getInt('id')}');
-  print('🔍 Full Name: ${prefs.getString('full_name')}');
-  print('🔍 Username: ${prefs.getString('username_${prefs.getInt('id')}')}');
-  print('🔍 Email: ${prefs.getString('email')}');
-  print('🔍 Created At: ${prefs.getString('created_at')}');
-  print('🔍 Date of Birth: ${prefs.getString('dateOfBirth')}');
-  // print('🔍 Gender: ${prefs.getDouble('gender')}');
-  print('🔍 Height: ${prefs.getDouble('height')}');
-  print('🔍 Weight: ${prefs.getDouble('weight')}');
-  print('🔍 Activity Level: ${prefs.getInt('activityLevel')}');
-  print('🔍 Active: ${prefs.getBool('active')}');
-  print('🔍 Profile Image: ${prefs.getString('profileImage')}');
-  print('🔍 Is Logged In: ${prefs.getBool('isLoggedIn')}');
-  print('🔍 Completed Onboarding: ${prefs.getBool('completedOnboarding')}');
-  print('🔍 Auth Token: ${prefs.getString('auth_token') != null ? '[TOKEN EXISTS]' : 'null'}');
-  print('🔍 Saved Email: ${prefs.getString('saved_email')}');
-  print('🔍 Remember Me: ${prefs.getBool('remember_me')}');
-  print('🔍 All Available Keys: ${prefs.getKeys().toList()}');
-  print('🔍 ===============================');
-}
+  // Start auto refresh timer untuk data
+  void _startAutoRefresh() {
+    if (!_isAutoRefreshEnabled) return;
+    
+    _stopAutoRefresh(); // Stop existing timer jika ada
+    
+    _refreshTimer = Timer.periodic(_refreshInterval, (timer) {
+      if (mounted && _isAutoRefreshEnabled) {
+        print('🔄 Auto refreshing user data...');
+        _loadUserData();
+      } else {
+        timer.cancel();
+      }
+    });
+    
+    print('✅ Auto refresh started (interval: ${_refreshInterval.inSeconds}s)');
+  }
+
+  // Start timer untuk update UI setiap detik
+  void _startUpdateTimer() {
+    _stopUpdateTimer(); // Stop existing timer jika ada
+    
+    _updateTimer = Timer.periodic(_updateInterval, (timer) {
+      if (mounted) {
+        setState(() {
+          // Trigger rebuild untuk update tampilan waktu
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+    
+    print('✅ Update timer started (interval: ${_updateInterval.inSeconds}s)');
+  }
+
+  // Stop auto refresh timer
+  void _stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    print('🛑 Auto refresh stopped');
+  }
+
+  // Stop update timer
+  void _stopUpdateTimer() {
+    _updateTimer?.cancel();
+    _updateTimer = null;
+    print('🛑 Update timer stopped');
+  }
+
+  // Toggle auto refresh
+  void _toggleAutoRefresh() {
+    setState(() {
+      _isAutoRefreshEnabled = !_isAutoRefreshEnabled;
+    });
+    
+    if (_isAutoRefreshEnabled) {
+      _startAutoRefresh();
+      print('✅ Auto refresh enabled');
+    } else {
+      _stopAutoRefresh();
+      print('🛑 Auto refresh disabled');
+    }
+  }
+
+  // Manual refresh method
+  Future<void> _manualRefresh() async {
+    print('🔄 Manual refresh triggered');
+    await _loadUserData();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Data refreshed successfully'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    if (!mounted) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (mounted) {
+        setState(() {
+          // Get the current user ID first
+          final userId = prefs.getInt('id') ?? 0;
+          
+          // Load basic user information
+          _userName = prefs.getString('full_name') ?? 
+                     prefs.getString('username_$userId') ?? 
+                     prefs.getString('username') ?? 
+                     'User';
+          
+          _userEmail = prefs.getString('email') ?? '';
+          
+          // Load additional user data
+          final userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
+          final userGender = prefs.getString('gender') ?? '';
+          final userHeight = prefs.getDouble('height') ?? 0.0;
+          final userActivityLevel = prefs.getInt('activityLevel') ?? 0;
+          final userActive = prefs.getBool('active') ?? false;
+          final userProfileImage = prefs.getString('profileImage') ?? '';
+          
+          // Load session data
+          final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+          final completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
+          final authToken = prefs.getString('auth_token') ?? '';
+          
+          // Assign to class variables
+          _userId = userId;
+          _userDateOfBirth = userDateOfBirth;
+          _userGender = userGender;
+          _userHeight = userHeight;
+          _userActivityLevel = userActivityLevel;
+          _userActive = userActive;
+          _userProfileImage = userProfileImage;
+          _isLoggedIn = isLoggedIn;
+          _completedOnboarding = completedOnboarding;
+          _authToken = authToken;
+          
+          // Update last refresh time
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+
+      // Debug print
+      print('🔍 === LOADING ALL USER DATA ===');
+      print('🔍 Refresh Time: ${_lastRefreshTime?.toString()}');
+      print('🔍 User ID: ${prefs.getInt('id')}');
+      print('🔍 Full Name: ${prefs.getString('full_name')}');
+      print('🔍 Email: ${prefs.getString('email')}');
+      print('🔍 Auto Refresh: ${_isAutoRefreshEnabled ? 'ON' : 'OFF'}');
+      print('🔍 ===============================');
+      
+    } catch (e) {
+      print('❌ Error loading user data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading user data: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _logout() async {
     if (!mounted) return;
+    
+    // Stop auto refresh saat logout
+    _stopAutoRefresh();
+    _stopUpdateTimer();
     
     setState(() {
       _isLoading = true;
@@ -120,6 +262,7 @@ Future<void> _loadUserData() async {
       final userId = prefs.getInt('id') ?? 0;
       print('🔄 Logging out user ID: $userId');
       
+      // Clear user data
       await prefs.remove('isLoggedIn');
       await prefs.remove('id');
       await prefs.remove('full_name');
@@ -127,7 +270,6 @@ Future<void> _loadUserData() async {
       await prefs.remove('created_at');
       await prefs.remove('dateOfBirth');
       await prefs.remove('auth_token');
-      
       await prefs.remove('gender');
       await prefs.remove('height');
       await prefs.remove('weight');
@@ -143,7 +285,6 @@ Future<void> _loadUserData() async {
       await prefs.remove('birthYear');
       
       print('✅ Session cleared for user $userId');
-      print('✅ User-specific onboarding data preserved');
       
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
@@ -172,6 +313,10 @@ Future<void> _loadUserData() async {
   Future<void> _deleteAccount(String password) async {
     if (!mounted) return;
     
+    // Stop auto refresh saat delete account
+    _stopAutoRefresh();
+    _stopUpdateTimer();
+    
     setState(() {
       _isDeletingAccount = true;
     });
@@ -197,11 +342,9 @@ Future<void> _loadUserData() async {
       final result = await DeactiveService.deactivateAccount(password);
       print('🔄 Deactivate result: $result');
 
-      // ✅ FIX: Improved success detection logic
       bool isSuccessful = _isDeactivationSuccessful(result);
 
       if (isSuccessful) {
-        // Success - clear all user data
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
         
@@ -260,28 +403,29 @@ Future<void> _loadUserData() async {
         setState(() {
           _isDeletingAccount = false;
         });
+        // Restart auto refresh jika masih di halaman ini dan enabled
+        if (_isAutoRefreshEnabled) {
+          _startAutoRefresh();
+          _startUpdateTimer();
+        }
       }
     }
   }
 
-  // ✅ NEW: Separate method to check if deactivation was successful
   bool _isDeactivationSuccessful(Map<String, dynamic> result) {
-    // Check explicit success flag first
     if (result['success'] == true) {
       return true;
     }
     
-    // If success flag is false but message indicates success
     if (result['message'] != null) {
       String message = result['message'].toString().toLowerCase();
-      // Look for success indicators in the message
       List<String> successIndicators = [
         'successful',
         'success',
         'deactivated',
         'deleted',
         'removed',
-        'account deactivation successful', // Exact match from your API
+        'account deactivation successful',
       ];
       
       for (String indicator in successIndicators) {
@@ -294,11 +438,9 @@ Future<void> _loadUserData() async {
     return false;
   }
 
-  // ✅ NEW: Separate method to get appropriate error message
   String _getErrorMessage(Map<String, dynamic> result) {
     String errorMessage = result['message'] ?? 'Failed to deactivate account';
     
-    // Customize error messages for better UX
     if (errorMessage.toLowerCase().contains('password')) {
       return 'Incorrect password. Please check your password and try again.';
     } else if (errorMessage.toLowerCase().contains('unauthorized')) {
@@ -367,29 +509,35 @@ Future<void> _loadUserData() async {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildProfileCard(),
-                SizedBox(height: 24),
-                _buildPreferencesSection(),
-                SizedBox(height: 24),
-                _buildAccountSection(),
-                SizedBox(height: 24),
-                _buildHelpSection(),
-                SizedBox(height: 32),
-                _buildLogoutButton(),
-                SizedBox(height: 20),
-              ],
+    return RefreshIndicator(
+      onRefresh: _manualRefresh,
+      color: Colors.blue,
+      backgroundColor: Color(0xFF2D2D44),
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildProfileCard(),
+                  SizedBox(height: 24),
+                  _buildPreferencesSection(),
+                  SizedBox(height: 24),
+                  _buildAccountSection(),
+                  SizedBox(height: 24),
+                  _buildHelpSection(),
+                  SizedBox(height: 32),
+                  _buildLogoutButton(),
+                  SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -407,30 +555,6 @@ Future<void> _loadUserData() async {
             ),
           ),
           Spacer(),
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.dark_mode_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 8),
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '🇺🇸',
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
         ],
       ),
     );
@@ -444,75 +568,96 @@ Future<void> _loadUserData() async {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.blue, width: 2),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[600],
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _userName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  shape: BoxShape.circle,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  _userEmail,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.edit,
+                child: Icon(
+                  Icons.person,
                   color: Colors.white,
-                  size: 16,
+                  size: 30,
                 ),
-                SizedBox(width: 4),
-                Text(
-                  'Edit Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _userName,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _userEmail,
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => EditProfilePage(),
+                    ),
+                  );
+                  
+                  // Refresh data setelah kembali dari edit profile
+                  if (result != null || result == true) {
+                    _loadUserData();
+                  }
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.edit,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          // Last refresh info dengan real-time update
+          
         ],
       ),
     );
   }
+
 
   Widget _buildPreferencesSection() {
     return _buildSection(
@@ -724,7 +869,6 @@ Future<void> _loadUserData() async {
   }
 }
 
-// ✅ NEW: Separate StatefulWidget for Delete Account Dialog
 class _DeleteAccountDialog extends StatefulWidget {
   final bool isDeletingAccount;
   final Function(String) onDeleteAccount;
@@ -754,7 +898,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     super.dispose();
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Color(0xFF2D2D44),

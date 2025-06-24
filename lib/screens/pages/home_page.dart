@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:aplikasi_counting_calories/screens/pages/food_scan_page.dart';
 import 'package:flutter/material.dart';
 import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart';
@@ -16,28 +17,124 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int currentIndex = 0;
   String userName = 'User';
+  bool _isLoading = false;
+  String _userName = 'User';
+  String _userEmail = '';
+  bool _isMetric = true;
+  bool _isDeletingAccount = false;
+  int _userId = 0;
+  String _userDateOfBirth = '';
+  String _userGender = '';
+  double _userHeight = 0.0;
+  double _userWeight = 0.0;
+  int _userActivityLevel = 0;
+  bool _userActive = false;
+  String _userProfileImage = '';
+  bool _isLoggedIn = false;
+  bool _completedOnboarding = false;
+  String _authToken = '';
+
+  // Auto-refresh variables
+  Timer? _refreshTimer;
+  String? _lastUpdateTimestamp;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadUserData();
+    _startPeriodicRefresh();
   }
 
-  Future<void> _loadUserName() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer = Timer.periodic(Duration(seconds: 2), (timer) async {
+      await _checkForProfileUpdates();
+    });
+  }
+
+  Future<void> _checkForProfileUpdates() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final loadedUserName = prefs.getString('full_name') ??
-          prefs.getString('username') ??
-          widget.userName;
-
-      setState(() {
-        userName = loadedUserName;
-      });
+      final lastUpdate = prefs.getString('last_profile_update');
+      
+      if (lastUpdate != null && lastUpdate != _lastUpdateTimestamp) {
+        _lastUpdateTimestamp = lastUpdate;
+        await _loadUserData();
+        print('🔄 Profile data refreshed due to update detected');
+      }
     } catch (e) {
-      print('Error loading username: $e');
-      setState(() {
-        userName = widget.userName;
-      });
+      print('❌ Error checking for profile updates: $e');
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (mounted) {
+        setState(() {
+          // Get the current user ID first
+          final userId = prefs.getInt('id') ?? 0;
+          
+          // Load basic user information with multiple fallbacks
+          _userName = prefs.getString('full_name') ?? 
+                     prefs.getString('username_$userId') ?? 
+                     prefs.getString('username') ?? 
+                     widget.userName;
+          
+          _userEmail = prefs.getString('email') ?? '';
+          
+          // Load additional user data
+          _userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
+          _userGender = prefs.getString('gender') ?? '';
+          _userHeight = prefs.getDouble('height') ?? 0.0;
+          _userWeight = prefs.getDouble('weight') ?? 0.0;
+          _userActivityLevel = prefs.getInt('activityLevel') ?? 0;
+          _userActive = prefs.getBool('active') ?? false;
+          _userProfileImage = prefs.getString('profileImage') ?? '';
+          
+          // Load session data
+          _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+          _completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
+          _authToken = prefs.getString('auth_token') ?? '';
+          
+          // Assign to class variables
+          _userId = userId;
+          
+          // Update userName for backward compatibility
+          userName = _userName;
+        });
+      }
+
+      // Debug print to verify all data loading
+      print('🔍 === LOADING ALL USER DATA ===');
+      print('🔍 User ID: ${prefs.getInt('id')}');
+      print('🔍 Full Name: ${prefs.getString('full_name')}');
+      print('🔍 Username: ${prefs.getString('username_${prefs.getInt('id')}')}');
+      print('🔍 Username (fallback): ${prefs.getString('username')}');
+      print('🔍 Final Username: $_userName');
+      print('🔍 Email: ${prefs.getString('email')}');
+      print('🔍 Created At: ${prefs.getString('created_at')}');
+      print('🔍 Date of Birth: ${prefs.getString('dateOfBirth')}');
+      print('🔍 Gender: ${prefs.getString('gender')}');
+      print('🔍 Height: ${prefs.getDouble('height')}');
+      print('🔍 Weight: ${prefs.getDouble('weight')}');
+      print('🔍 Activity Level: ${prefs.getInt('activityLevel')}');
+      print('🔍 Active: ${prefs.getBool('active')}');
+      print('🔍 Profile Image: ${prefs.getString('profileImage')}');
+      print('🔍 Is Logged In: ${prefs.getBool('isLoggedIn')}');
+      print('🔍 Completed Onboarding: ${prefs.getBool('completedOnboarding')}');
+      print('🔍 Auth Token: ${prefs.getString('auth_token') != null ? '[TOKEN EXISTS]' : 'null'}');
+      print('🔍 Last Profile Update: ${prefs.getString('last_profile_update')}');
+      print('🔍 All Available Keys: ${prefs.getKeys().toList()}');
+      print('🔍 ===============================');
+    } catch (e) {
+      print('❌ Error loading user data: $e');
     }
   }
 
@@ -45,6 +142,13 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     setState(() {
       currentIndex = index;
     });
+    
+    // Refresh data ketika kembali ke homepage
+    if (index == 0) {
+      Future.delayed(Duration(milliseconds: 100), () {
+        _loadUserData();
+      });
+    }
   }
 
   Widget _getCurrentPage() {
@@ -120,13 +224,22 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               ],
             ),
             Text(
-              userName,
+              _userName.isNotEmpty ? _userName : 'User',
               style: TextStyle(
                 color: Colors.blue[300],
                 fontSize: 24,
                 fontWeight: FontWeight.w500,
               ),
             ),
+            // Debug info (remove in production)
+            if (_userName.isEmpty)
+              Text(
+                'Debug: Username is empty',
+                style: TextStyle(
+                  color: Colors.red[300],
+                  fontSize: 12,
+                ),
+              ),
           ],
         ),
         Container(
