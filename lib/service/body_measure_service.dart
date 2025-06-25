@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BodyMeasurementsService {
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static const String baseUrl = ApiConstants.baseUrl;
   
   // Helper method untuk mendapatkan token
   static Future<String?> _getToken() async {

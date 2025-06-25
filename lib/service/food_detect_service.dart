@@ -1,19 +1,60 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FoodDetectionService {
-  static const String _baseUrl = 'http://10.0.2.2:3000';
-  static const String _detectEndpoint = '/detect';
+  static const String _baseUrl = ApiConstants.baseUrl;
+  static const String _detectEndpoint = '/scan';
   
   // Singleton pattern
   static final FoodDetectionService _instance = FoodDetectionService._internal();
   factory FoodDetectionService() => _instance;
   FoodDetectionService._internal();
 
+  String? _cachedToken;
+
+  /// Ambil token dari SharedPreferences
+  Future<String?> _getAccessToken() async {
+    // Jika sudah ada di cache, gunakan itu
+    if (_cachedToken != null && _cachedToken!.isNotEmpty) {
+      return _cachedToken;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _cachedToken = prefs.getString('access_token') ?? 
+                    prefs.getString('token') ?? 
+                    prefs.getString('auth_token');
+      
+      print('Token from SharedPreferences: ${_cachedToken != null ? "Found" : "Not found"}');
+      return _cachedToken;
+    } catch (e) {
+      print('Error getting token from SharedPreferences: $e');
+      return null;
+    }
+  }
+
+  /// Hapus token dari cache dan SharedPreferences
+  Future<void> clearToken() async {
+    _cachedToken = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('access_token');
+      await prefs.remove('token');
+      await prefs.remove('auth_token');
+    } catch (e) {
+      print('Error clearing token: $e');
+    }
+  }
+
   /// Mengirim gambar ke Express.js API untuk deteksi makanan
   Future<FoodDetectionResult> detectFood(String imagePath) async {
     try {
+      // Dapatkan token dari SharedPreferences
+      final accessToken = await _getAccessToken();
+      
       // Validasi file gambar
       final file = File(imagePath);
       if (!await file.exists()) {
@@ -23,6 +64,22 @@ class FoodDetectionService {
       // Buat multipart request
       final uri = Uri.parse('$_baseUrl$_detectEndpoint');
       final request = http.MultipartRequest('POST', uri);
+      
+      // Tambahkan headers dengan token jika ada
+      if (accessToken != null && accessToken.isNotEmpty) {
+        // Cek apakah token sudah dalam format Bearer
+        if (accessToken.toLowerCase().startsWith('bearer ')) {
+          request.headers['Authorization'] = accessToken;
+        } else {
+          request.headers['Authorization'] = 'Bearer $accessToken';
+        }
+        print('Using token for authentication');
+      } else {
+        print('No token found - proceeding without authentication');
+      }
+      
+      // Tambahkan headers umum
+      request.headers['Accept'] = 'application/json';
       
       // Tambahkan file gambar
       request.files.add(
@@ -62,11 +119,15 @@ class FoodDetectionService {
           print('JSON decode error: $e');
           throw FoodDetectionException('Format response dari server tidak valid: $e');
         }
+      } else if (response.statusCode == 401) {
+        // Token invalid atau expired, hapus dari cache
+        await clearToken();
+        throw FoodDetectionException('Token tidak valid atau sudah expired. Silakan login kembali');
       } else {
         try {
           final errorData = json.decode(response.body);
           throw FoodDetectionException(
-            errorData['error'] ?? 'Server error: ${response.statusCode}'
+            errorData['message'] ?? errorData['error'] ?? 'Server error: ${response.statusCode}'
           );
         } catch (e) {
           throw FoodDetectionException('Server error: ${response.statusCode}');
@@ -74,7 +135,7 @@ class FoodDetectionService {
       }
     } on SocketException {
       throw FoodDetectionException(
-        'Tidak dapat terhubung ke server. Pastikan Express.js server berjalan di http://10.0.2.2:3000'
+        'Tidak dapat terhubung ke server. Pastikan Express.js server berjalan di $_baseUrl'
       );
     } on FormatException catch (e) {
       throw FoodDetectionException('Format response dari server tidak valid: $e');
@@ -109,12 +170,85 @@ class FoodDetectionService {
   /// Cek apakah server Express.js tersedia
   Future<bool> isServerAvailable() async {
     try {
+      final accessToken = await _getAccessToken();
+      final headers = <String, String>{};
+      
+      if (accessToken != null && accessToken.isNotEmpty) {
+        if (accessToken.toLowerCase().startsWith('bearer ')) {
+          headers['Authorization'] = accessToken;
+        } else {
+          headers['Authorization'] = 'Bearer $accessToken';
+        }
+      }
+      
       final response = await http.get(
         Uri.parse(_baseUrl),
+        headers: headers,
       ).timeout(Duration(seconds: 5));
+      
       return response.statusCode == 200 || response.statusCode == 404;
     } catch (e) {
+      print('Server availability check error: $e');
       return false;
+    }
+  }
+
+  /// Test connection dengan informasi token
+  Future<Map<String, dynamic>> testConnection() async {
+    try {
+      final accessToken = await _getAccessToken();
+      final headers = <String, String>{};
+      
+      if (accessToken != null && accessToken.isNotEmpty) {
+        if (accessToken.toLowerCase().startsWith('bearer ')) {
+          headers['Authorization'] = accessToken;
+        } else {
+          headers['Authorization'] = 'Bearer $accessToken';
+        }
+      }
+      
+      final response = await http.get(
+        Uri.parse(_baseUrl),
+        headers: headers,
+      ).timeout(Duration(seconds: 5));
+      
+      return {
+        'success': true,
+        'statusCode': response.statusCode,
+        'body': response.body,
+        'hasToken': accessToken != null && accessToken.isNotEmpty,
+        'tokenPreview': accessToken != null ? '${accessToken.substring(0, 10)}...' : 'null',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+        'hasToken': false,
+      };
+    }
+  }
+
+  /// Cek apakah ada token tersimpan
+  Future<bool> hasValidToken() async {
+    final token = await _getAccessToken();
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Debug: Print semua keys yang ada di SharedPreferences
+  Future<void> debugSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      print('SharedPreferences keys: $keys');
+      
+      for (String key in keys) {
+        if (key.toLowerCase().contains('token') || key.toLowerCase().contains('auth')) {
+          final value = prefs.getString(key);
+          print('$key: ${value != null ? "${value.substring(0, 10)}..." : "null"}');
+        }
+      }
+    } catch (e) {
+      print('Error debugging SharedPreferences: $e');
     }
   }
 }

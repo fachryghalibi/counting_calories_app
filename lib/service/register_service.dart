@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:http/http.dart' as http;
 
 /// Service untuk register, login, logout, dan test connection
 class RegisterService {
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static const String baseUrl = ApiConstants.baseUrl;
 
   /// Register user
   static Future<Map<String, dynamic>> register({

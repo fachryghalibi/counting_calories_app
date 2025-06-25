@@ -1,5 +1,6 @@
 import 'package:aplikasi_counting_calories/screens/pages/edit_profile_page.dart';
 import 'package:aplikasi_counting_calories/service/deactive_service.dart';
+import 'package:aplikasi_counting_calories/service/edit_profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -28,15 +29,11 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _isLoggedIn = false;
   bool _completedOnboarding = false;
   String _authToken = '';
+  bool _isLoadingProfileImage = false;
 
   // Auto refresh variables
-  Timer? _refreshTimer;
-  Timer? _updateTimer; // Timer untuk update UI setiap detik
   StreamSubscription<void>? _refreshStreamSubscription;
   final StreamController<void> _refreshStreamController = StreamController<void>.broadcast();
-  static const Duration _refreshInterval = Duration(seconds: 1); // Refresh data setiap 30 detik
-  static const Duration _updateInterval = Duration(seconds: 1); // Update UI setiap 1 detik
-  bool _isAutoRefreshEnabled = true;
   DateTime? _lastRefreshTime;
 
   @override
@@ -44,16 +41,12 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
-    _startAutoRefresh();
-    _startUpdateTimer(); // Start timer untuk update UI
     _setupRefreshListener();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopAutoRefresh();
-    _stopUpdateTimer(); // Stop timer untuk update UI
     _refreshStreamSubscription?.cancel();
     _refreshStreamController.close();
     super.dispose();
@@ -65,102 +58,30 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     
     switch (state) {
       case AppLifecycleState.resumed:
-        print('📱 App resumed - Starting auto refresh');
-        _startAutoRefresh();
-        _startUpdateTimer();
-        _loadUserData();
+        print('📱 App resumed - Checking for new data');
+        _loadUserData(forceRefresh: true);
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        print('📱 App paused/inactive - Stopping auto refresh');
-        _stopAutoRefresh();
-        _stopUpdateTimer();
+        print('📱 App paused/inactive');
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        _stopAutoRefresh();
-        _stopUpdateTimer();
         break;
     }
   }
 
-  // Setup listener untuk manual refresh
   void _setupRefreshListener() {
     _refreshStreamSubscription = _refreshStreamController.stream.listen((_) {
       if (mounted) {
-        _loadUserData();
+        _loadUserData(forceRefresh: true);
       }
     });
   }
 
-  // Start auto refresh timer untuk data
-  void _startAutoRefresh() {
-    if (!_isAutoRefreshEnabled) return;
-    
-    _stopAutoRefresh(); // Stop existing timer jika ada
-    
-    _refreshTimer = Timer.periodic(_refreshInterval, (timer) {
-      if (mounted && _isAutoRefreshEnabled) {
-        print('🔄 Auto refreshing user data...');
-        _loadUserData();
-      } else {
-        timer.cancel();
-      }
-    });
-    
-    print('✅ Auto refresh started (interval: ${_refreshInterval.inSeconds}s)');
-  }
-
-  // Start timer untuk update UI setiap detik
-  void _startUpdateTimer() {
-    _stopUpdateTimer(); // Stop existing timer jika ada
-    
-    _updateTimer = Timer.periodic(_updateInterval, (timer) {
-      if (mounted) {
-        setState(() {
-          // Trigger rebuild untuk update tampilan waktu
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-    
-    print('✅ Update timer started (interval: ${_updateInterval.inSeconds}s)');
-  }
-
-  // Stop auto refresh timer
-  void _stopAutoRefresh() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
-    print('🛑 Auto refresh stopped');
-  }
-
-  // Stop update timer
-  void _stopUpdateTimer() {
-    _updateTimer?.cancel();
-    _updateTimer = null;
-    print('🛑 Update timer stopped');
-  }
-
-  // Toggle auto refresh
-  void _toggleAutoRefresh() {
-    setState(() {
-      _isAutoRefreshEnabled = !_isAutoRefreshEnabled;
-    });
-    
-    if (_isAutoRefreshEnabled) {
-      _startAutoRefresh();
-      print('✅ Auto refresh enabled');
-    } else {
-      _stopAutoRefresh();
-      print('🛑 Auto refresh disabled');
-    }
-  }
-
-  // Manual refresh method
   Future<void> _manualRefresh() async {
     print('🔄 Manual refresh triggered');
-    await _loadUserData();
+    await _loadUserData(forceRefresh: true);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,84 +94,206 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     }
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadUserData({bool forceRefresh = false}) async {
     if (!mounted) return;
     
     try {
+      setState(() {
+        _isLoadingProfileImage = true;
+      });
+
       final prefs = await SharedPreferences.getInstance();
       
-      if (mounted) {
-        setState(() {
-          // Get the current user ID first
-          final userId = prefs.getInt('id') ?? 0;
-          
-          // Load basic user information
-          _userName = prefs.getString('full_name') ?? 
-                     prefs.getString('username_$userId') ?? 
-                     prefs.getString('username') ?? 
-                     'User';
-          
-          _userEmail = prefs.getString('email') ?? '';
-          
-          // Load additional user data
-          final userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
-          final userGender = prefs.getString('gender') ?? '';
-          final userHeight = prefs.getDouble('height') ?? 0.0;
-          final userActivityLevel = prefs.getInt('activityLevel') ?? 0;
-          final userActive = prefs.getBool('active') ?? false;
-          final userProfileImage = prefs.getString('profileImage') ?? '';
-          
-          // Load session data
-          final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-          final completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
-          final authToken = prefs.getString('auth_token') ?? '';
-          
-          // Assign to class variables
-          _userId = userId;
-          _userDateOfBirth = userDateOfBirth;
-          _userGender = userGender;
-          _userHeight = userHeight;
-          _userActivityLevel = userActivityLevel;
-          _userActive = userActive;
-          _userProfileImage = userProfileImage;
-          _isLoggedIn = isLoggedIn;
-          _completedOnboarding = completedOnboarding;
-          _authToken = authToken;
-          
-          // Update last refresh time
-          _lastRefreshTime = DateTime.now();
-        });
+      // Load data lokal dari SharedPreferences
+      final currentProfileImage = prefs.getString('profileImage') ?? '';
+      final currentUserId = prefs.getInt('id') ?? 0;
+      final currentUserName = prefs.getString('full_name') ?? 
+                            prefs.getString('username_$currentUserId') ?? 
+                            prefs.getString('username') ?? 
+                            'User';
+      final currentUserEmail = prefs.getString('email') ?? '';
+      final currentDateOfBirth = prefs.getString('dateOfBirth') ?? '';
+      final currentGender = prefs.getString('gender') ?? '';
+      final currentHeight = prefs.getDouble('height') ?? 0.0;
+      final currentWeight = prefs.getDouble('weight') ?? 0.0; // Added weight loading
+      final currentActivityLevel = prefs.getInt('activityLevel') ?? 0;
+      final currentActive = prefs.getBool('active') ?? false;
+      final currentIsLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final currentCompletedOnboarding = prefs.getBool('completedOnboarding') ?? false;
+      final currentAuthToken = prefs.getString('auth_token') ?? '';
+
+      // Cek apakah perlu memanggil API (reduced cache time for better responsiveness)
+      if (!forceRefresh && 
+          _lastRefreshTime != null && 
+          DateTime.now().difference(_lastRefreshTime!).inSeconds < 10) { // Reduced from 30 to 10 seconds
+        print('🔄 Using cached data, last refresh: ${_lastRefreshTime.toString()}');
+        
+        // Update state dengan data lokal terbaru
+        if (mounted) {
+          setState(() {
+            _userId = currentUserId;
+            _userName = currentUserName;
+            _userEmail = currentUserEmail;
+            _userDateOfBirth = currentDateOfBirth;
+            _userGender = currentGender;
+            _userHeight = currentHeight;
+            _userWeight = currentWeight;
+            _userActivityLevel = currentActivityLevel;
+            _userActive = currentActive;
+            _isLoggedIn = currentIsLoggedIn;
+            _completedOnboarding = currentCompletedOnboarding;
+            _authToken = currentAuthToken;
+            _userProfileImage = currentProfileImage;
+            _isLoadingProfileImage = false;
+          });
+        }
+        return;
       }
 
-      // Debug print
-      print('🔍 === LOADING ALL USER DATA ===');
-      print('🔍 Refresh Time: ${_lastRefreshTime?.toString()}');
-      print('🔍 User ID: ${prefs.getInt('id')}');
-      print('🔍 Full Name: ${prefs.getString('full_name')}');
-      print('🔍 Email: ${prefs.getString('email')}');
-      print('🔍 Auto Refresh: ${_isAutoRefreshEnabled ? 'ON' : 'OFF'}');
-      print('🔍 ===============================');
+      // Ambil data terbaru dari API
+      print('🔄 Fetching fresh data from API...');
+      final result = await EditProfileService.getCurrentUser();
+      
+      if (result.success && result.data != null) {
+        final userData = result.data;
+        
+        // Extract all user data from API response
+        final freshProfileImage = userData['profileImage'] ?? 
+                                userData['profileImageUrl'] ?? 
+                                userData['profile_image'] ?? 
+                                currentProfileImage;
+        final freshUserName = userData['full_name'] ?? userData['username'] ?? currentUserName;
+        final freshUserEmail = userData['email'] ?? currentUserEmail;
+        final freshDateOfBirth = userData['dateOfBirth'] ?? userData['date_of_birth'] ?? currentDateOfBirth;
+        final freshGender = userData['gender'] ?? currentGender;
+        final freshHeight = (userData['height'] ?? currentHeight).toDouble();
+        final freshWeight = (userData['weight'] ?? currentWeight).toDouble();
+        final freshActivityLevel = userData['activityLevel'] ?? userData['activity_level'] ?? currentActivityLevel;
+        final freshActive = userData['active'] ?? currentActive;
+
+        // Update state dengan data terbaru
+        if (mounted) {
+          setState(() {
+            _userId = currentUserId;
+            _userName = freshUserName;
+            _userEmail = freshUserEmail;
+            _userDateOfBirth = freshDateOfBirth;
+            _userGender = freshGender;
+            _userHeight = freshHeight;
+            _userWeight = freshWeight;
+            _userActivityLevel = freshActivityLevel;
+            _userActive = freshActive;
+            _isLoggedIn = currentIsLoggedIn;
+            _completedOnboarding = currentCompletedOnboarding;
+            _authToken = currentAuthToken;
+            _userProfileImage = freshProfileImage;
+          });
+        }
+
+        // Update SharedPreferences dengan data terbaru
+        final List<Future<void>> updateTasks = [];
+        
+        if (freshProfileImage.isNotEmpty && freshProfileImage != currentProfileImage) {
+          updateTasks.add(prefs.setString('profileImage', freshProfileImage));
+          updateTasks.add(prefs.setString('profile_image', freshProfileImage));
+          print('✅ Profile image will be updated: $freshProfileImage');
+        }
+        
+        if (freshUserName != currentUserName) {
+          updateTasks.add(prefs.setString('full_name', freshUserName));
+          print('✅ User name will be updated: $freshUserName');
+        }
+        
+        if (freshUserEmail != currentUserEmail) {
+          updateTasks.add(prefs.setString('email', freshUserEmail));
+          print('✅ User email will be updated: $freshUserEmail');
+        }
+        
+        if (freshDateOfBirth != currentDateOfBirth) {
+          updateTasks.add(prefs.setString('dateOfBirth', freshDateOfBirth));
+        }
+        
+        if (freshGender != currentGender) {
+          updateTasks.add(prefs.setString('gender', freshGender));
+        }
+        
+        if (freshHeight != currentHeight) {
+          updateTasks.add(prefs.setDouble('height', freshHeight));
+        }
+        
+        if (freshWeight != currentWeight) {
+          updateTasks.add(prefs.setDouble('weight', freshWeight));
+        }
+        
+        if (freshActivityLevel != currentActivityLevel) {
+          updateTasks.add(prefs.setInt('activityLevel', freshActivityLevel));
+        }
+        
+        if (freshActive != currentActive) {
+          updateTasks.add(prefs.setBool('active', freshActive));
+        }
+
+        // Execute all SharedPreferences updates
+        if (updateTasks.isNotEmpty) {
+          await Future.wait(updateTasks);
+          print('✅ SharedPreferences updated with fresh data');
+        }
+
+        // Simpan waktu refresh terakhir
+        _lastRefreshTime = DateTime.now();
+        
+        print('🔍 === USER DATA UPDATED ===');
+        print('🔍 User Name: $freshUserName');
+        print('🔍 User Email: $freshUserEmail');
+        print('🔍 Profile Image: $freshProfileImage');
+        print('🔍 Height: $freshHeight');
+        print('🔍 Weight: $freshWeight');
+        print('🔍 ===============================');
+        
+      } else {
+        print('❌ Failed to fetch user data from API');
+        // Fallback to local data
+        if (mounted) {
+          setState(() {
+            _userId = currentUserId;
+            _userName = currentUserName;
+            _userEmail = currentUserEmail;
+            _userDateOfBirth = currentDateOfBirth;
+            _userGender = currentGender;
+            _userHeight = currentHeight;
+            _userWeight = currentWeight;
+            _userActivityLevel = currentActivityLevel;
+            _userActive = currentActive;
+            _isLoggedIn = currentIsLoggedIn;
+            _completedOnboarding = currentCompletedOnboarding;
+            _authToken = currentAuthToken;
+            _userProfileImage = currentProfileImage;
+          });
+        }
+      }
       
     } catch (e) {
       print('❌ Error loading user data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading user data: $e'),
+            content: Text('Error loading profile data: $e'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfileImage = false;
+        });
       }
     }
   }
 
   Future<void> _logout() async {
     if (!mounted) return;
-    
-    // Stop auto refresh saat logout
-    _stopAutoRefresh();
-    _stopUpdateTimer();
     
     setState(() {
       _isLoading = true;
@@ -262,7 +305,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       final userId = prefs.getInt('id') ?? 0;
       print('🔄 Logging out user ID: $userId');
       
-      // Clear user data
       await prefs.remove('isLoggedIn');
       await prefs.remove('id');
       await prefs.remove('full_name');
@@ -312,10 +354,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
   Future<void> _deleteAccount(String password) async {
     if (!mounted) return;
-    
-    // Stop auto refresh saat delete account
-    _stopAutoRefresh();
-    _stopUpdateTimer();
     
     setState(() {
       _isDeletingAccount = true;
@@ -403,11 +441,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         setState(() {
           _isDeletingAccount = false;
         });
-        // Restart auto refresh jika masih di halaman ini dan enabled
-        if (_isAutoRefreshEnabled) {
-          _startAutoRefresh();
-          _startUpdateTimer();
-        }
       }
     }
   }
@@ -576,14 +609,10 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.grey[600],
                   shape: BoxShape.circle,
+                  color: Colors.grey[600],
                 ),
-                child: Icon(
-                  Icons.person,
-                  color: Colors.white,
-                  size: 30,
-                ),
+                child: _buildProfileImageContent(),
               ),
               SizedBox(width: 16),
               Expanded(
@@ -611,15 +640,30 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
               ),
               GestureDetector(
                 onTap: () async {
+                  print('🔄 Navigating to EditProfilePage...');
                   final result = await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => EditProfilePage(),
                     ),
                   );
                   
-                  // Refresh data setelah kembali dari edit profile
-                  if (result != null || result == true) {
-                    _loadUserData();
+                  print('🔄 Returned from EditProfilePage with result: $result');
+                  
+                  // Force refresh regardless of result to ensure UI updates
+                  if (mounted) {
+                    print('🔄 Force refreshing user data...');
+                    await _loadUserData(forceRefresh: true);
+                    
+                    // Show success message if edit was successful
+                    if (result == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Profile updated successfully'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   }
                 },
                 child: Container(
@@ -651,13 +695,53 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
               ),
             ],
           ),
-          // Last refresh info dengan real-time update
-          
         ],
       ),
     );
   }
 
+  Widget _buildProfileImageContent() {
+    if (_isLoadingProfileImage) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: Colors.blue,
+          strokeWidth: 2,
+        ),
+      );
+    } else if (_userProfileImage.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          _userProfileImage,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.blue,
+                strokeWidth: 2,
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            print('❌ Error loading profile image: $error');
+            return Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 30,
+            );
+          },
+        ),
+      );
+    } else {
+      return Icon(
+        Icons.person,
+        color: Colors.white,
+        size: 30,
+      );
+    }
+  }
 
   Widget _buildPreferencesSection() {
     return _buildSection(
@@ -898,7 +982,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     super.dispose();
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Color(0xFF2D2D44),

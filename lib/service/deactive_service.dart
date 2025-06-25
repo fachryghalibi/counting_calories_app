@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DeactiveService {
   // Base URL - ganti dengan URL backend Anda
-  static const String baseUrl = 'http://10.0.2.2:3000'; // Ganti dengan base_url Anda
+  static const String baseUrl = ApiConstants.baseUrl; // Ganti dengan base_url Anda
   
   /// Deactivate user account
   /// 

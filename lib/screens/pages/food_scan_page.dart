@@ -180,11 +180,29 @@ class _FoodScanPageState extends State<FoodScanPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
-              Icon(Icons.restaurant_menu, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Hasil Scan Makanan'),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.restaurant_menu, color: Colors.blue, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Food Detected',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           content: Container(
@@ -194,146 +212,160 @@ class _FoodScanPageState extends State<FoodScanPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Gambar yang diambil
+                  // Gambar yang diambil dengan border rounded
                   if (_lastImagePath != null)
                     Container(
                       height: 200,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: FileImage(File(_lastImagePath!)),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey[700]!, width: 1),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: Image.file(
+                          File(_lastImagePath!),
                           fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 20),
                   
-                  // Total Kalori
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue.shade50, Colors.blue.shade100],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  // Food items dengan desain seperti di gambar
+                  if (_scanResult!.items.isNotEmpty) ...[
+                    // Header dengan background gelap
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF2D2D44),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Food Detected',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${_scanResult!.items.length} items',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.local_fire_department, 
-                             color: Colors.orange, size: 28),
-                        SizedBox(width: 12),
-                        Column(
+                    SizedBox(height: 16),
+                    
+                    // List makanan dengan desain chip
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _scanResult!.items.map((item) => Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2D2D44),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey[700]!, width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '${_scanResult!.totalCalorie}',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                            // Icon makanan dengan warna berdasarkan jenis
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: _getFoodColor(item.name),
+                                shape: BoxShape.circle,
                               ),
                             ),
+                            SizedBox(width: 8),
                             Text(
-                              'kalori',
+                              '${item.name} X${_getFoodQuantity(item.name)}',
                               style: TextStyle(
+                                color: Colors.white,
                                 fontSize: 14,
-                                color: Colors.blue.shade600,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
-                      ],
+                      )).toList(),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  
-                  // List makanan terdeteksi
-                  if (_scanResult!.items.isNotEmpty) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Makanan Terdeteksi (${_scanResult!.items.length}):',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    ...(_scanResult!.items.map((item) => Container(
-                      margin: EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: ListTile(
-                        leading: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(Icons.restaurant, 
-                                   color: Colors.green.shade700, size: 20),
-                        ),
-                        title: Text(
-                          item.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Confidence: ${item.confidencePercentage}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        trailing: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade600,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '✓',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ))),
                   ] else ...[
                     Container(
-                      padding: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.shade200),
+                        color: Color(0xFF2D2D44),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Icon(Icons.warning_amber, color: Colors.orange),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Tidak ada makanan yang terdeteksi',
-                              style: TextStyle(color: Colors.orange.shade800),
+                          Icon(Icons.search_off, color: Colors.grey[400], size: 40),
+                          SizedBox(height: 12),
+                          Text(
+                            'No food detected',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 16,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
+                  
+                  SizedBox(height: 20),
+                  
+                  // Total Kalori dengan desain yang lebih menarik
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.withOpacity(0.2), Colors.blue.withOpacity(0.1)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Total Calories',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '${_scanResult!.totalCalorie}',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'kcal',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -341,25 +373,46 @@ class _FoodScanPageState extends State<FoodScanPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Tutup'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey[400],
+              ),
+              child: Text('Close'),
             ),
             if (_scanResult!.items.isNotEmpty)
-              ElevatedButton.icon(
+              ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                   _saveResult();
                 },
-                icon: Icon(Icons.save),
-                label: Text('Simpan'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
+                child: Text('Save'),
               ),
           ],
         );
       },
     );
+  }
+
+  Color _getFoodColor(String foodName) {
+    // Mengembalikan warna berdasarkan jenis makanan
+    if (foodName.toLowerCase().contains('noodle')) return Colors.blue;
+    if (foodName.toLowerCase().contains('egg')) return Colors.orange;
+    if (foodName.toLowerCase().contains('rice')) return Colors.white;
+    if (foodName.toLowerCase().contains('meat')) return Colors.red;
+    if (foodName.toLowerCase().contains('vegetable')) return Colors.green;
+    return Colors.grey;
+  }
+
+  int _getFoodQuantity(String foodName) {
+    // Simulasi quantity berdasarkan nama makanan
+    if (foodName.toLowerCase().contains('egg')) return 4;
+    return 1;
   }
 
   void _saveResult() {
@@ -383,6 +436,7 @@ class _FoodScanPageState extends State<FoodScanPage> {
         ),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -400,6 +454,7 @@ class _FoodScanPageState extends State<FoodScanPage> {
         ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -422,24 +477,7 @@ class _FoodScanPageState extends State<FoodScanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF1A1A2E),
-      appBar: AppBar(
-        title: Text(
-          'Scan Kalori Makanan',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Color(0xFF2D2D44),
-        elevation: 0,
-        automaticallyImplyLeading: false, // This removes the back button
-        actions: [
-          IconButton(
-            icon: Icon(Icons.help_outline, color: Colors.white),
-            onPressed: () {
-              _showHelpDialog();
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Color(0xFF0A0A0A),
       body: _buildBody(),
     );
   }
@@ -447,127 +485,236 @@ class _FoodScanPageState extends State<FoodScanPage> {
   Widget _buildBody() {
     // Jika ada error kamera, tampilkan error message dengan retry button
     if (_cameraError != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.camera_alt_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Error Kamera',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                _cameraError!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
+      return SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Color(0xFF1A1A2E),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.camera_alt_outlined,
+                  size: 64,
                   color: Colors.grey[400],
-                  fontSize: 14,
                 ),
               ),
-            ),
-            SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _retryCamera,
-              icon: Icon(Icons.refresh),
-              label: Text('Coba Lagi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+              SizedBox(height: 24),
+              Text(
+                'Camera Error',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: 12),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  _cameraError!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _retryCamera,
+                icon: Icon(Icons.refresh),
+                label: Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     // Jika kamera belum initialized, tampilkan loading
     if (!_isInitialized) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.blue),
-            SizedBox(height: 16),
-            Text(
-              'Memuat kamera...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ],
+      return SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Color(0xFF1A1A2E),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.blue,
+                    strokeWidth: 3,
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+              Text(
+                'Initializing Camera...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     // Jika kamera sudah initialized, tampilkan camera preview
-    return Column(
-      children: [
-        Expanded(
-          flex: 3,
-          child: Container(
-            margin: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
+    return SafeArea(
+      child: Stack(
+        children: [
+          // Camera Preview Full Screen
+          Positioned.fill(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              child: CameraPreview(_cameraController!),
+            ),
+          ),
+          
+          // Overlay gelap untuk kontras
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.6),
+                  ],
+                  stops: [0.0, 0.3, 0.7, 1.0],
+                ),
+              ),
+            ),
+          ),
+          
+          // Top section - Header
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                  Text(
+                    'Scan Food',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.help_outline, color: Colors.white, size: 24),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Detection area guide
+          Center(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: MediaQuery.of(context).size.width * 0.8,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.8),
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Stack(
                 children: [
-                  CameraPreview(_cameraController!),
-                  // Overlay untuk guide
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.blue.withOpacity(0.3),
-                        width: 2,
+                  // Corner brackets
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.blue, width: 4),
+                          left: BorderSide(color: Colors.blue, width: 4),
+                        ),
                       ),
                     ),
                   ),
-                  // Center guide
-                  Center(
+                  Positioned(
+                    top: 10,
+                    right: 10,
                     child: Container(
-                      width: 200,
-                      height: 200,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.blue.withOpacity(0.7),
-                          width: 2,
+                        border: Border(
+                          top: BorderSide(color: Colors.blue, width: 4),
+                          right: BorderSide(color: Colors.blue, width: 4),
                         ),
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Center(
-                        child: Text(
-                          'Letakkan makanan\ndi sini',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black54,
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.blue, width: 4),
+                          left: BorderSide(color: Colors.blue, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.blue, width: 4),
+                          right: BorderSide(color: Colors.blue, width: 4),
                         ),
                       ),
                     ),
@@ -576,108 +723,160 @@ class _FoodScanPageState extends State<FoodScanPage> {
               ),
             ),
           ),
-        ),
-        Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Text(
-                'Arahkan kamera ke makanan',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Pastikan makanan terlihat jelas dalam frame',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: Offset(0, 5),
+          
+          // Bottom section - Controls
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Instruction text
+                  Text(
+                    'Position food within the frame',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
-                ),
-                child: FloatingActionButton(
-                  onPressed: _isProcessing ? null : _takePicture,
-                  backgroundColor: Colors.blue,
-                  elevation: 0,
-                  child: _isProcessing
-                      ? SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  ),
+                  SizedBox(height: 30),
+                  
+                  // Camera controls
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Manual button
+                      Column(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                            ),
+                            child: Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
-                        )
-                      : Icon(
-                          Icons.camera_alt,
-                          size: 32,
+                          SizedBox(height: 8),
+                          Text(
+                            'Manual',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Scan button (main)
+                      Column(
+                        children: [
+                          GestureDetector(
+                            onTap: _isProcessing ? null : _takePicture,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: _isProcessing
+                                  ? SizedBox(
+                                      width: 30,
+                                      height: 30,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.camera_alt,
+                                      size: 32,
+                                      color: Colors.white,
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Scan',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Gallery button
+                      Column(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                            ),
+                            child: Icon(
+                              Icons.photo_library,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Gallery',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  if (_isProcessing) ...[
+                    SizedBox(height: 20),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Processing image...',
+                        style: TextStyle(
                           color: Colors.white,
+                          fontSize: 14,
                         ),
-                ),
-              ),
-              SizedBox(height: 16),
-              if (_isProcessing)
-                Column(
-                  children: [
-                    Text(
-                      'Memproses gambar...',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      backgroundColor: Colors.grey[700],
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                    ),
                   ],
-                ),
-            ],
-          ),
-        ),
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Color(0xFF2D2D44),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue, size: 20),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'AI akan mendeteksi jenis makanan dan menghitung kalori secara otomatis',
-                  style: TextStyle(
-                    color: Colors.grey[300],
-                    fontSize: 12,
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -686,11 +885,18 @@ class _FoodScanPageState extends State<FoodScanPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Icon(Icons.help_outline, color: Colors.blue),
               SizedBox(width: 8),
-              Text('Cara Menggunakan'),
+              Text(
+                'How to Use',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
           content: Column(
@@ -699,30 +905,33 @@ class _FoodScanPageState extends State<FoodScanPage> {
             children: [
               _buildHelpItem(
                 Icons.camera_alt,
-                'Posisikan Makanan',
-                'Letakkan makanan dalam frame kamera dengan pencahayaan yang cukup',
+                'Position Food',
+                'Place food within the detection frame with good lighting',
               ),
               _buildHelpItem(
                 Icons.center_focus_strong,
-                'Fokus pada Makanan',
-                'Pastikan makanan terlihat jelas dan tidak terpotong',
+                'Focus on Food',
+                'Make sure food is clearly visible and not cut off',
               ),
               _buildHelpItem(
                 Icons.touch_app,
-                'Ambil Foto',
-                'Tap tombol kamera untuk mengambil foto dan memulai deteksi',
+                'Take Photo',
+                'Tap the scan button to capture and start detection',
               ),
               _buildHelpItem(
                 Icons.timeline,
-                'Lihat Hasil',
-                'AI akan menampilkan kalori total dan jenis makanan yang terdeteksi',
+                'View Results',
+                'AI will display total calories and detected food types',
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Mengerti'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue,
+              ),
+              child: Text('Got it'),
             ),
           ],
         );
@@ -739,10 +948,10 @@ class _FoodScanPageState extends State<FoodScanPage> {
           Container(
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: Colors.blue.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: Colors.blue, size: 20),
+            child: Icon(icon, color: Colors.blue, size: 16),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -752,6 +961,7 @@ class _FoodScanPageState extends State<FoodScanPage> {
                 Text(
                   title,
                   style: TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
@@ -760,7 +970,7 @@ class _FoodScanPageState extends State<FoodScanPage> {
                 Text(
                   description,
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: Colors.grey[400],
                     fontSize: 12,
                   ),
                 ),

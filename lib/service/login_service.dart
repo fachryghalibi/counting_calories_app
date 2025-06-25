@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:http/http.dart' as http;
 
 class LoginService {
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static const String baseUrl = ApiConstants.baseUrl;
   static const String loginEndpoint = '/auth/login';
   
   Future<Map<String, dynamic>> login(String email, String password) async {
