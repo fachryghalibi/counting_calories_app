@@ -1,4 +1,6 @@
 import 'package:aplikasi_counting_calories/screens/pages/edit_profile_page.dart';
+import 'package:aplikasi_counting_calories/screens/pages/edit_body_measure_page.dart'; 
+import 'package:aplikasi_counting_calories/screens/pages/edit_activity_level_page.dart'; // Added import for EditActivityLevelPage
 import 'package:aplikasi_counting_calories/service/deactive_service.dart';
 import 'package:aplikasi_counting_calories/service/edit_profile_service.dart';
 import 'package:flutter/material.dart';
@@ -248,6 +250,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         print('🔍 Profile Image: $freshProfileImage');
         print('🔍 Height: $freshHeight');
         print('🔍 Weight: $freshWeight');
+        print('🔍 Activity Level: $freshActivityLevel');
         print('🔍 ===============================');
         
       } else {
@@ -540,6 +543,92 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     );
   }
 
+  // Method for navigating to Edit Body Measure page
+  Future<void> _navigateToEditBodyMeasure() async {
+    print('🔄 Navigating to EditBodyMeasurePage...');
+    
+    try {
+      final result = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditBodyMeasurePage(),
+        ),
+      );
+      
+      print('🔄 Returned from EditBodyMeasurePage with result: $result');
+      
+      // Force refresh data after returning from edit body measure page
+      if (mounted) {
+        print('🔄 Force refreshing user data after body measure update...');
+        await _loadUserData(forceRefresh: true);
+        
+        // Show success message if edit was successful
+        if (result == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Body measurements updated successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error navigating to EditBodyMeasurePage: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening body measure page'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  // NEW METHOD: Navigation for Edit Activity Level page
+  Future<void> _navigateToEditActivityLevel() async {
+    print('🔄 Navigating to EditActivityLevelPage...');
+    
+    try {
+      final result = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditActivityLevelPage(),
+        ),
+      );
+      
+      print('🔄 Returned from EditActivityLevelPage with result: $result');
+      
+      // Force refresh data after returning from edit activity level page
+      if (mounted) {
+        print('🔄 Force refreshing user data after activity level update...');
+        await _loadUserData(forceRefresh: true);
+        
+        // Show success message if edit was successful
+        if (result == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Activity level updated successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error navigating to EditActivityLevelPage: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening activity level page'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -748,17 +837,17 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       title: 'Preferences',
       children: [
         _buildSettingItem(
-          icon: Icons.restaurant_outlined,
-          title: 'Edit Nutrition Goal',
-          subtitle: 'Customize your daily nutrition targets',
-          onTap: () {},
+          icon: Icons.fitness_center, // Changed icon to be more appropriate for body measurements
+          title: 'Edit Body Measure',
+          subtitle: 'Update your height, weight and BMI',
+          onTap: _navigateToEditBodyMeasure, // Navigation function for body measure
         ),
         SizedBox(height: 12),
         _buildSettingItem(
           icon: Icons.directions_run_outlined,
           title: 'Activity Level',
           subtitle: 'Set your daily activity level',
-          onTap: () {},
+          onTap: _navigateToEditActivityLevel, // UPDATED: Now uses the new navigation function
         ),
       ],
     );
@@ -787,7 +876,16 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         borderRadius: BorderRadius.circular(16),
       ),
       child: GestureDetector(
-        onTap: () {},
+        onTap: () {
+          // TODO: Implement help & FAQ functionality
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Help & FAQ coming soon'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        },
         child: Row(
           children: [
             Container(

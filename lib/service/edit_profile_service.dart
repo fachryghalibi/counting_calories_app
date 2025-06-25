@@ -257,66 +257,75 @@ class EditProfileService {
   }
 
   // Get current user data
-  static Future<ApiResponse> getCurrentUser() async {
-    try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        return ApiResponse.error('Authentication token not found. Please login again.');
-      }
+  // Fix for the unnecessary type check in getCurrentUser() method
+// Original problematic line:
+// final userData = responseData is Map<String, dynamic> ? responseData : {};
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/currentUser'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(_defaultTimeout);
-
-      print('📡 Get current user response status: ${response.statusCode}');
-      print('📡 Get current user response body: ${response.body}');
-
-      final responseData = _parseJsonResponse(response.body);
-      if (responseData == null) {
-        return ApiResponse.error('Invalid server response');
-      }
-
-      if (response.statusCode == 200) {
-        // Process profile image ID to full URL
-        final userData = responseData is Map<String, dynamic> ? responseData : {};
-        
-        // Check for profile image ID and convert to full URL
-        final profileImageId = userData['profileImage'] ?? 
-                              userData['profile_image'] ?? 
-                              userData['profileImageId'] ?? 
-                              userData['imageId'];
-        
-        if (profileImageId != null && profileImageId.toString().isNotEmpty) {
-          final fullImageUrl = constructImageUrl(profileImageId.toString());
-          userData['profileImageUrl'] = fullImageUrl;
-          userData['profileImage'] = fullImageUrl; // Keep both for compatibility
-          
-          print('✅ Profile image URL constructed: $fullImageUrl');
-        }
-        
-        return ApiResponse.success(data: userData);
-      } else {
-        return ApiResponse.error(
-          responseData['message'] ?? 
-          responseData['error'] ?? 
-          'Failed to get user data'
-        );
-      }
-
-    } on SocketException {
-      return ApiResponse.error('No internet connection. Please check your network.');
-    } on HttpException {
-      return ApiResponse.error('Server communication error. Please try again.');
-    } catch (e) {
-      print('❌ Error getting current user: $e');
-      return ApiResponse.error('Network error. Please try again.');
+// Fixed version:
+static Future<ApiResponse> getCurrentUser() async {
+  try {
+    final token = await _getAuthToken();
+    if (token == null) {
+      return ApiResponse.error('Authentication token not found. Please login again.');
     }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/currentUser'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    ).timeout(_defaultTimeout);
+
+    print('📡 Get current user response status: ${response.statusCode}');
+    print('📡 Get current user response body: ${response.body}');
+
+    final responseData = _parseJsonResponse(response.body);
+    if (responseData == null) {
+      return ApiResponse.error('Invalid server response');
+    }
+
+    if (response.statusCode == 200) {
+      // Process profile image ID to full URL
+      // FIXED: Remove unnecessary type check since responseData is already Map<String, dynamic>?
+      final userData = responseData; // Simply use responseData directly
+      
+      // Alternative approach if you want to ensure it's not null:
+      // final userData = responseData ?? <String, dynamic>{};
+      
+      // Check for profile image ID and convert to full URL
+      final profileImageId = userData['profileImage'] ?? 
+                            userData['profile_image'] ?? 
+                            userData['profileImageId'] ?? 
+                            userData['imageId'];
+      
+      if (profileImageId != null && profileImageId.toString().isNotEmpty) {
+        final fullImageUrl = constructImageUrl(profileImageId.toString());
+        userData['profileImageUrl'] = fullImageUrl;
+        userData['profileImage'] = fullImageUrl; // Keep both for compatibility
+        
+        print('✅ Profile image URL constructed: $fullImageUrl');
+      }
+      
+      return ApiResponse.success(data: userData);
+    } else {
+      return ApiResponse.error(
+        responseData['message'] ?? 
+        responseData['error'] ?? 
+        'Failed to get user data'
+      );
+    }
+
+  } on SocketException {
+    return ApiResponse.error('No internet connection. Please check your network.');
+  } on HttpException {
+    return ApiResponse.error('Server communication error. Please try again.');
+  } catch (e) {
+    print('❌ Error getting current user: $e');
+    return ApiResponse.error('Network error. Please try again.');
   }
+}
 
   // Delete profile image
   static Future<ApiResponse> deleteProfileImage() async {
