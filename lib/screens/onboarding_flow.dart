@@ -1,4 +1,5 @@
 import 'package:aplikasi_counting_calories/screens/pages/body_measure_page.dart';
+import 'package:aplikasi_counting_calories/service/base_url_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -183,7 +184,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return false;
       }
 
-      const String baseUrl = 'http://10.0.2.2:3000';
+      const String baseUrl = ApiConstants.baseUrl;
       final String url = '$baseUrl/user/setupAccount';
 
       print('🔄 Calling setupAccount endpoint: $url');

@@ -1,4 +1,4 @@
-// pages/body_measure_page.dart - Updated with consistent colors and snackbar
+// pages/body_measure_page.dart - Fixed bottom overflow when keyboard appears
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:aplikasi_counting_calories/models/user_data.dart';
@@ -239,168 +239,184 @@ class _BodyMeasurementsPageState extends State<BodyMeasurementsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Let\'s set up your body measurements',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+Widget build(BuildContext context) {
+  return Padding(
+    padding: const EdgeInsets.all(24.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Let\'s set up your body measurements',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
-          SizedBox(height: 8),
-          Text(
-            'This helps us calculate your daily calorie needs',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[400],
-            ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'This helps us calculate your daily calorie needs',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[400],
           ),
-          SizedBox(height: 32),
+        ),
+        
+        Expanded( // Ganti Flexible dengan Expanded
+          child: SingleChildScrollView( // Tambahkan scroll untuk menghindari overflow
+            child: Column(
+              children: [
+                SizedBox(height: 32),
 
-          // Height Input
-          _buildMeasurementInput(
-            label: 'Height',
-            controller: _heightController,
-            unit: widget.userData.heightUnit ?? 'cm',
-            onUnitToggle: _toggleHeightUnit,
-            onChanged: _updateHeight,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-          ),
+                // Height Input
+                _buildMeasurementInput(
+                  label: 'Height',
+                  controller: _heightController,
+                  unit: widget.userData.heightUnit ?? 'cm',
+                  onUnitToggle: _toggleHeightUnit,
+                  onChanged: _updateHeight,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
 
-          SizedBox(height: 24),
+                SizedBox(height: 24),
 
-          // Current Weight Input
-          _buildMeasurementInput(
-            label: 'Current Weight',
-            controller: _weightController,
-            unit: widget.userData.weightUnit ?? 'kg',
-            onUnitToggle: _toggleWeightUnit,
-            onChanged: _updateWeight,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-          ),
+                // Current Weight Input
+                _buildMeasurementInput(
+                  label: 'Current Weight',
+                  controller: _weightController,
+                  unit: widget.userData.weightUnit ?? 'kg',
+                  onUnitToggle: _toggleWeightUnit,
+                  onChanged: _updateWeight,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
 
-          SizedBox(height: 24),
+                SizedBox(height: 24),
 
-          // Goal Weight Input
-          _buildMeasurementInput(
-            label: 'Goal Weight',
-            controller: _goalWeightController,
-            unit: widget.userData.weightUnit ?? 'kg',
-            onUnitToggle: _toggleWeightUnit,
-            onChanged: _updateGoalWeight,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-          ),
+                // Goal Weight Input
+                _buildMeasurementInput(
+                  label: 'Goal Weight',
+                  controller: _goalWeightController,
+                  unit: widget.userData.weightUnit ?? 'kg',
+                  onUnitToggle: _toggleWeightUnit,
+                  onChanged: _updateGoalWeight,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
 
-          // BMI Display
-          if (widget.userData.hasCompleteBodyMeasurements && widget.userData.bmi != null) ...[
-            SizedBox(height: 32),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Color(0xFF363B59), // Match personal info color
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[600]!), // Match personal info border
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your BMI',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                // BMI Display
+                if (widget.userData.hasCompleteBodyMeasurements && 
+                    widget.userData.bmi != null) ...[
+                  SizedBox(height: 24),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF363B59),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.grey[600] ?? Colors.grey,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your BMI',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              widget.userData.bmi!.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              widget.userData.bmiCategory ?? '',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: _getBMIColor(widget.userData.bmi!),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ],
+                
+                // Tambahkan spacing di bagian bawah untuk scroll
+                SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ),
+
+        // Next Button - Bottom fixed
+        if (widget.showNextButton)
+          Container(
+            width: double.infinity,
+            height: 50,
+            margin: EdgeInsets.only(top: 16), // Tambahkan margin
+            child: ElevatedButton(
+              onPressed: (widget.userData.hasCompleteBodyMeasurements && !_isLoading)
+                  ? _saveAndNext 
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007AFF),
+                disabledBackgroundColor: Colors.grey[700],
+                foregroundColor: Colors.white, // Tambahkan foregroundColor
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                elevation: 0,
+              ),
+              child: _isLoading 
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min, // Tambahkan mainAxisSize
                     children: [
-                      Text(
-                        widget.userData.bmi!.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
+                      SizedBox(width: 12),
                       Text(
-                        widget.userData.bmiCategory ?? '',
+                        'Saving...',
                         style: TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
-                          color: _getBMIColor(widget.userData.bmi!),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          Spacer(),
-
-          // Next Button - Updated to match personal info style
-          if (widget.showNextButton)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: widget.userData.hasCompleteBodyMeasurements && !_isLoading
-                    ? _saveAndNext 
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF007AFF), // Match personal info button color
-                  disabledBackgroundColor: Colors.grey[700],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(26), // Match personal info border radius
-                  ),
-                  elevation: 0,
-                ),
-                child: _isLoading 
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Saving...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      'Continue',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  )
+                : Text(
+                    'Continue',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
-              ),
+                  ),
             ),
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
+}
 
   Widget _buildMeasurementInput({
     required String label,

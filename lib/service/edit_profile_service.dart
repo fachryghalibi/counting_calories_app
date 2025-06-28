@@ -191,70 +191,72 @@ class EditProfileService {
   }
 
   // Update password
-  static Future<ApiResponse> updatePassword({
-    required String oldPassword,
-    required String newPassword,
-  }) async {
-    try {
-      final token = await _getAuthToken();
-      if (token == null) {
-        return ApiResponse.error('Authentication token not found. Please login again.');
-      }
-
-      // Validate passwords
-      if (oldPassword.trim().isEmpty) {
-        return ApiResponse.error('Current password is required');
-      }
-
-      if (!isValidPassword(newPassword)) {
-        return ApiResponse.error('New password must be at least 6 characters long');
-      }
-
-      if (oldPassword.trim() == newPassword.trim()) {
-        return ApiResponse.error('New password must be different from current password');
-      }
-
-      final requestBody = {
-        'oldPassword': oldPassword.trim(),
-        'newPassword': newPassword.trim(),
-      };
-
-      print('🔄 Updating password...');
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/updatePassword'),
-        headers: _getJsonHeaders(token),
-        body: json.encode(requestBody),
-      ).timeout(_defaultTimeout);
-
-      print('📡 Password update response status: ${response.statusCode}');
-
-      final responseData = _parseJsonResponse(response.body);
-      if (responseData == null) {
-        return ApiResponse.error('Invalid server response');
-      }
-
-      if (response.statusCode == 200) {
-        return ApiResponse.success(
-          message: responseData['message'] ?? 'Password updated successfully',
-        );
-      } else {
-        return ApiResponse.error(
-          responseData['error'] ?? 
-          responseData['message'] ?? 
-          'Failed to update password'
-        );
-      }
-
-    } on SocketException {
-      return ApiResponse.error('No internet connection. Please check your network.');
-    } on HttpException {
-      return ApiResponse.error('Server communication error. Please try again.');
-    } catch (e) {
-      print('❌ Error updating password: $e');
-      return ApiResponse.error('Network error. Please try again.');
+  // Update password - FIXED: Changed from PUT to POST
+static Future<ApiResponse> updatePassword({
+  required String oldPassword,
+  required String newPassword,
+}) async {
+  try {
+    final token = await _getAuthToken();
+    if (token == null) {
+      return ApiResponse.error('Authentication token not found. Please login again.');
     }
+
+    // Validate passwords
+    if (oldPassword.trim().isEmpty) {
+      return ApiResponse.error('Current password is required');
+    }
+
+    if (!isValidPassword(newPassword)) {
+      return ApiResponse.error('New password must be at least 6 characters long');
+    }
+
+    if (oldPassword.trim() == newPassword.trim()) {
+      return ApiResponse.error('New password must be different from current password');
+    }
+
+    final requestBody = {
+      'oldPassword': oldPassword.trim(),
+      'newPassword': newPassword.trim(),
+    };
+
+    print('🔄 Updating password...');
+
+    // FIXED: Changed from http.put to http.post
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/updatePassword'),
+      headers: _getJsonHeaders(token),
+      body: json.encode(requestBody),
+    ).timeout(_defaultTimeout);
+
+    print('📡 Password update response status: ${response.statusCode}');
+
+    final responseData = _parseJsonResponse(response.body);
+    if (responseData == null) {
+      return ApiResponse.error('Invalid server response');
+    }
+
+    if (response.statusCode == 200) {
+      return ApiResponse.success(
+        message: responseData['message'] ?? 'Password updated successfully',
+      );
+    } else {
+      return ApiResponse.error(
+        responseData['error'] ?? 
+        responseData['message'] ?? 
+        'Failed to update password'
+      );
+    }
+
+  } on SocketException {
+    return ApiResponse.error('No internet connection. Please check your network.');
+  } on HttpException {
+    return ApiResponse.error('Server communication error. Please try again.');
+  } catch (e) {
+    print('❌ Error updating password: $e');
+    return ApiResponse.error('Network error. Please try again.');
   }
+}
 
   // Get current user data
   // Fix for the unnecessary type check in getCurrentUser() method

@@ -682,112 +682,122 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     );
   }
 
-  Widget _buildProfileCard() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Color(0xFF2D2D44),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue, width: 2),
-      ),
-      child: Column(
-        children: [
-          Row(
+Widget _buildProfileCard() {
+  return Container(
+    padding: EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Color(0xFF2D2D44),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.blue, width: 2),
+    ),
+    child: Row(
+      children: [
+        // Profile Image
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.grey[600],
+          ),
+          child: _buildProfileImageContent(),
+        ),
+        SizedBox(width: 16),
+        
+        // User Info - Expanded to take available space
+        Expanded(
+          flex: 2, // Reduced flex to give more space to button
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey[600],
+              Text(
+                _userName.isNotEmpty ? _userName : 'User Name',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
-                child: _buildProfileImageContent(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _userName,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _userEmail,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+              SizedBox(height: 4),
+              Text(
+                _userEmail.isNotEmpty ? _userEmail : 'user@example.com',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
                 ),
-              ),
-              GestureDetector(
-                onTap: () async {
-                  print('🔄 Navigating to EditProfilePage...');
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => EditProfilePage(),
-                    ),
-                  );
-                  
-                  print('🔄 Returned from EditProfilePage with result: $result');
-                  
-                  // Force refresh regardless of result to ensure UI updates
-                  if (mounted) {
-                    print('🔄 Force refreshing user data...');
-                    await _loadUserData(forceRefresh: true);
-                    
-                    // Show success message if edit was successful
-                    if (result == true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Profile updated successfully'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+        
+        SizedBox(width: 12),
+        
+        // Edit Button - Flexible width
+        GestureDetector(
+            onTap: () async {
+              print('🔄 Navigating to EditProfilePage...');
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => EditProfilePage(),
+                ),
+              );
+              
+              print('🔄 Returned from EditProfilePage with result: $result');
+              
+              // Force refresh regardless of result to ensure UI updates
+              if (mounted) {
+                print('🔄 Force refreshing user data...');
+                await _loadUserData(forceRefresh: true);
+                
+                // Show success message if edit was successful
+                if (result == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Profile updated successfully'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.edit,
+                  color: Colors.white,
+                  size: 16,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildProfileImageContent() {
     if (_isLoadingProfileImage) {
