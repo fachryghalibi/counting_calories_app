@@ -289,14 +289,9 @@ static Future<ApiResponse> getCurrentUser() async {
     }
 
     if (response.statusCode == 200) {
-      // Process profile image ID to full URL
-      // FIXED: Remove unnecessary type check since responseData is already Map<String, dynamic>?
-      final userData = responseData; // Simply use responseData directly
-      
-      // Alternative approach if you want to ensure it's not null:
-      // final userData = responseData ?? <String, dynamic>{};
-      
-      // Check for profile image ID and convert to full URL
+
+      final userData = responseData; 
+
       final profileImageId = userData['profileImage'] ?? 
                             userData['profile_image'] ?? 
                             userData['profileImageId'] ?? 
@@ -357,7 +352,6 @@ static Future<ApiResponse> getCurrentUser() async {
       }
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // Remove profile image from SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('profileImage');
         await prefs.remove('profile_image');
@@ -384,7 +378,6 @@ static Future<ApiResponse> getCurrentUser() async {
     }
   }
 
-  // Private helper methods
   static Future<String?> _getAuthToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -11,13 +11,12 @@ class FoodDetectionService {
   
   // Progressive timeout strategy
   static const Duration _connectionTimeout = Duration(seconds: 15);
-  static const Duration _receiveTimeout = Duration(seconds: 180); // 3 minutes for AI processing
-  static const int _maxRetries = 2; // Reduced retries for faster feedback
+  static const Duration _receiveTimeout = Duration(seconds: 180); 
+  static const int _maxRetries = 2; 
   static const Duration _retryDelay = Duration(seconds: 3);
   
   // Image compression settings
-  static const int _maxImageSizeKB = 2048; // 2MB max
-  static const int _compressionQuality = 85;
+  static const int _maxImageSizeKB = 2048; 
   
   // Singleton pattern
   static final FoodDetectionService _instance = FoodDetectionService._internal();
@@ -47,7 +46,6 @@ class FoodDetectionService {
     }
   }
 
-  /// Hapus token dari cache dan SharedPreferences
   Future<void> clearToken() async {
     _cachedToken = null;
     try {
@@ -234,7 +232,6 @@ class FoodDetectionService {
     // Image is too large, need to compress (placeholder for actual compression)
     onStatusUpdate?.call('Image too large (${fileSizeKB.toStringAsFixed(0)}KB), optimizing...');
     
-    // For now, return original path
     // In production, implement actual image compression here
     print('WARNING: Image size ${fileSizeKB.toStringAsFixed(1)}KB exceeds recommended ${_maxImageSizeKB}KB');
     return imagePath;
@@ -317,7 +314,7 @@ class FoodDetectionService {
     }
   }
 
-  /// Start progress timer for long-running operations
+  // Start progress timer for long-running operations
   void _startProgressTimer(Function(String)? onStatusUpdate) {
     int seconds = 0;
     _progressTimer = Timer.periodic(Duration(seconds: 10), (timer) {
@@ -332,14 +329,13 @@ class FoodDetectionService {
     });
   }
 
-  /// Stop progress timer
+  // Stop progress timer
   void _stopProgressTimer() {
     _progressTimer?.cancel();
     _progressTimer = null;
   }
 
-  /// Enhanced response handler with better error messages
- /// Enhanced response handler with better error messages
+ // Enhanced response handler with better error messages
 FoodDetectionResult _handleResponse(http.Response response) {
   // Handle success responses (2xx range)
   if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -431,7 +427,7 @@ FoodDetectionResult _handleResponse(http.Response response) {
     );
   }
 
-  /// Parse response dari Python/Flask format
+  // Parse response dari Python/Flask format
   FoodDetectionResult _parsePythonResponse(Map<String, dynamic> jsonData) {
     final foods = jsonData['foods'] as List<dynamic>? ?? [];
     
@@ -450,7 +446,7 @@ FoodDetectionResult _handleResponse(http.Response response) {
     );
   }
 
-  /// Get user-friendly error message
+  // Get user-friendly error message
   String _getErrorMessage(dynamic error) {
     if (error is SocketException) {
       return 'Tidak dapat terhubung ke server. Periksa koneksi internet dan pastikan server berjalan di $_baseUrl';
@@ -471,7 +467,7 @@ FoodDetectionResult _handleResponse(http.Response response) {
     return status.isAvailable;
   }
 
-  /// Enhanced connection test with comprehensive diagnostics
+  // Enhanced connection test with comprehensive diagnostics
   Future<Map<String, dynamic>> testConnection() async {
     try {
       final stopwatch = Stopwatch()..start();
@@ -510,13 +506,13 @@ FoodDetectionResult _handleResponse(http.Response response) {
     }
   }
 
-  /// Check if there's a valid token
+  // Check if there's a valid token
   Future<bool> hasValidToken() async {
     final token = await _getAccessToken();
     return token != null && token.isNotEmpty && token.length > 10;
   }
 
-  /// Debug SharedPreferences with more detailed info
+  // Debug SharedPreferences with more detailed info
   Future<Map<String, dynamic>> debugSharedPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -549,17 +545,17 @@ FoodDetectionResult _handleResponse(http.Response response) {
     }
   }
 
-  /// Cleanup resources
+  // Cleanup resources
   void dispose() {
     _stopProgressTimer();
     _cachedToken = null;
   }
 }
 
-/// Server status information with enhanced details
+// Server status information with enhanced details
 class ServerStatus {
   final bool isAvailable;
-  final int responseTime; // in milliseconds
+  final int responseTime; 
   final int statusCode;
   final String message;
 
@@ -612,7 +608,7 @@ class FoodDetectionResult {
     items.map((e) => e.confidence).reduce((a, b) => a + b) / items.length;
 }
 
-/// Model untuk makanan yang terdeteksi
+// Model untuk makanan yang terdeteksi
 class DetectedFood {
   final String name;
   final double confidence;
@@ -654,7 +650,7 @@ class DetectedFood {
   bool get isLowConfidence => confidence < 0.5;
 }
 
-/// Model untuk bounding box
+// Model untuk bounding box
 class BoundingBox {
   final double x1;
   final double y1;
@@ -675,7 +671,7 @@ class BoundingBox {
   double get centerY => (y1 + y2) / 2;
 }
 
-/// Exception khusus untuk Food Detection dengan kategori error
+// Exception khusus untuk Food Detection dengan kategori error
 class FoodDetectionException implements Exception {
   final String message;
   final String? category;

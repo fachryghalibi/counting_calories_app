@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:aplikasi_counting_calories/screens/pages/food_scan_page.dart';
+import 'package:aplikasi_counting_calories/screens/pages/history_page.dart';
 import 'package:flutter/material.dart';
 import 'package:aplikasi_counting_calories/screens/pages/setting_page.dart';
 import 'package:aplikasi_counting_calories/widgets/navigation_bar_bottom.dart';
@@ -158,7 +159,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       case 1:
         return FoodScanPage();
       case 2:
-        return _buildPlaceholderPage('History');
+        return HistoryPage();
       case 3:
         return SettingsPage();
       default:

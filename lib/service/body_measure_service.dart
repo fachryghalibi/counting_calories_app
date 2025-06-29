@@ -34,7 +34,6 @@ class BodyMeasurementsService {
     required String weightUnit,
   }) async {
     try {
-      // Validasi input
       if (height <= 0) {
         return {
           'success': false,
@@ -54,11 +53,11 @@ class BodyMeasurementsService {
       double weightInKg = weight;
 
       if (heightUnit == 'ft') {
-        heightInCm = height * 30.48; // Convert feet to cm
+        heightInCm = height * 30.48; 
       }
       
       if (weightUnit == 'lbs') {
-        weightInKg = weight * 0.453592; // Convert lbs to kg
+        weightInKg = weight * 0.453592; 
       }
 
       final headers = await _getHeaders();
@@ -70,7 +69,7 @@ class BodyMeasurementsService {
       });
 
       final response = await http.put(
-        Uri.parse('$baseUrl/user/updateData'), // Perbaiki endpoint sesuai yang benar
+        Uri.parse('$baseUrl/user/updateData'), 
         headers: headers,
         body: body,
       );
