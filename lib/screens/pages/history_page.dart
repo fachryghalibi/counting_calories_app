@@ -13,8 +13,8 @@ class _HistoryPageState extends State<HistoryPage> {
   DateTime selectedDate = DateTime.now();
   List<DateTime> weekDates = [];
   Map<String, double> weeklyCalories = {};
-  List<MealGroup> todayMeals = [];
-  double todayTotalCalories = 473;
+  List<FoodScan> todayScans = [];
+  double todayTotalCalories = 0;
   double targetCalories = 2200;
   bool isLoading = false;
 
@@ -124,35 +124,26 @@ class _HistoryPageState extends State<HistoryPage> {
     try {
       String dateString = DateFormat('yyyy-MM-dd').format(date);
       final response = await HistoryService.getDayDetailScans(dateString);
-      final dayDetail = DayDetailScans.fromJson(response);
       
-      setState(() {
-        todayMeals = dayDetail.meals;
-        todayTotalCalories = dayDetail.totalCalories;
-      });
+      // Parse response sesuai struktur baru
+
+        final scansData = response['scans'] as List<dynamic>? ?? [];
+        final totalCalories = (response['totalCalories'] as num?)?.toDouble() ?? 0;
+        
+        List<FoodScan> scans = scansData.map((scanData) {
+          return FoodScan.fromJson(scanData as Map<String, dynamic>);
+        }).toList();
+        
+        setState(() {
+          todayScans = scans;
+          todayTotalCalories = totalCalories;
+        });
+      
     } catch (e) {
-      // Fallback ke mock data jika API error
+      print('Error loading day detail: $e');
+      // Fallback ke empty data jika API error
       setState(() {
-        todayMeals = [
-          MealGroup(
-            mealType: 'Breakfast',
-            time: '7:30 AM',
-            totalCalories: 343,
-            foods: [
-              FoodItem(name: 'Nasi Goreng', calories: 343, icon: '🍚'),
-              FoodItem(name: 'Rice', calories: 138),
-              FoodItem(name: 'Eggs', calories: 140),
-            ],
-          ),
-          MealGroup(
-            mealType: 'Lunch',
-            time: '7:30 AM',
-            totalCalories: 130,
-            foods: [
-              FoodItem(name: 'Manggo Juice', calories: 130, icon: '🥤'),
-            ],
-          ),
-        ];
+        todayScans = [];
         todayTotalCalories = weeklyCalories[DateFormat('yyyy-MM-dd').format(date)] ?? 0;
       });
       throw Exception('Error loading day detail: $e');
@@ -188,69 +179,69 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E2E),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.blue),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFF1A1A2E),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF1A1A2E),
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 32,
+      title: Transform.translate(
+        offset: const Offset(0, 5),
+        child: const Text(
           'History',
           style: TextStyle(
             color: Colors.blue,
-            fontSize: 20,
+            fontSize: 30,
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today, color: Colors.grey),
-            onPressed: () async {
-              final DateTime? picked = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null && picked != selectedDate) {
-                setState(() {
-                  selectedDate = picked;
-                  // Update week dates dengan tanggal yang dipilih di tengah
-                  weekDates = List.generate(7, (index) => 
-                    picked.add(Duration(days: index - 3))
-                  );
-                });
-                await _loadWeeklyCalorieData();
-                await _loadDayDetailData(picked);
-              }
-            },
-          ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.calendar_today, color: Colors.grey),
+          onPressed: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: selectedDate,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null && picked != selectedDate) {
+              setState(() {
+                selectedDate = picked;
+                // Update week dates dengan tanggal yang dipilih di tengah
+                weekDates = List.generate(7, (index) => 
+                  picked.add(Duration(days: index - 3))
+                );
+              });
+              await _loadWeeklyCalorieData();
+              await _loadDayDetailData(picked);
+            }
+          },
+        ),
+      ],
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _buildWeeklyCalendar(),
+          const SizedBox(height: 20),
+          _buildCaloriesSummary(),
+          const SizedBox(height: 20),
+          if (isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            _buildTodayScans(),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildWeeklyCalendar(),
-            const SizedBox(height: 20),
-            _buildCaloriesSummary(),
-            const SizedBox(height: 20),
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              _buildTodayMeals(),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWeeklyCalendar() {
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(7, (index) {
@@ -337,7 +328,7 @@ class _HistoryPageState extends State<HistoryPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A3E),
+        color: const Color(0xFF1F2332),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -412,7 +403,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildTodayMeals() {
+  Widget _buildTodayScans() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -425,16 +416,16 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ),
         const SizedBox(height: 16),
-        if (todayMeals.isEmpty)
+        if (todayScans.isEmpty)
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A3E),
+              color: const Color(0xFF1F2332),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Center(
               child: Text(
-                'No meals recorded for this day',
+                'No food scans recorded for this day',
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 16,
@@ -443,17 +434,17 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           )
         else
-          ...todayMeals.map((meal) => _buildMealCard(meal)),
+          ...todayScans.map((scan) => _buildScanCard(scan)),
       ],
     );
   }
 
-  Widget _buildMealCard(MealGroup meal) {
+  Widget _buildScanCard(FoodScan scan) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A3E),
+        color: const Color(0xFF1F2332),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -461,81 +452,179 @@ class _HistoryPageState extends State<HistoryPage> {
         children: [
           Row(
             children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.camera_alt,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      scan.foodName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      scan.timeEaten,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Text(
-                '• ${meal.mealType}',
+                '+${scan.calories.toInt()} kcal',
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+                  color: Colors.green,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ...meal.foods.map((food) => _buildFoodItem(food)),
+          if (scan.items.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Detected items:',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...scan.items.map((item) => _buildDetectedItem(item)),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildFoodItem(FoodItem food) {
+  Widget _buildDetectedItem(DetectedItem item) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF3A3A54),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF2A2F42),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               color: Colors.blue.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
             ),
-            child: Center(
+            child: const Center(
               child: Text(
-                food.icon ?? '🍽️',
-                style: const TextStyle(fontSize: 20),
+                '🍽️',
+                style: TextStyle(fontSize: 12),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  food.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (food.portion != null)
-                  Text(
-                    food.portion!,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
+            child: Text(
+              item.foodName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+              ),
             ),
           ),
           Text(
-            '+${food.calories.toInt()} kcal',
+            '${(item.confidence * 100).toInt()}%',
             style: const TextStyle(
-              color: Colors.green,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+              fontSize: 11,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// Data models untuk struktur baru
+class FoodScan {
+  final int id;
+  final String foodName;
+  final double calories;
+  final String timeEaten;
+  final String imageId;
+  final List<DetectedItem> items;
+
+  FoodScan({
+    required this.id,
+    required this.foodName,
+    required this.calories,
+    required this.timeEaten,
+    required this.imageId,
+    required this.items,
+  });
+
+  factory FoodScan.fromJson(Map<String, dynamic> json) {
+    return FoodScan(
+      id: json['id'] ?? 0,
+      foodName: json['foodName'] ?? 'Unknown Food',
+      calories: (json['calories'] as num?)?.toDouble() ?? 0,
+      timeEaten: json['timeEaten'] ?? '',
+      imageId: json['imageId'] ?? '',
+      items: (json['items'] as List<dynamic>?)
+          ?.map((item) => DetectedItem.fromJson(item as Map<String, dynamic>))
+          .toList() ?? [],
+    );
+  }
+}
+
+class DetectedItem {
+  final int id;
+  final String foodName;
+  final double confidence;
+  final double? x1;
+  final double? y1;
+  final double? x2;
+  final double? y2;
+
+  DetectedItem({
+    required this.id,
+    required this.foodName,
+    required this.confidence,
+    this.x1,
+    this.y1,
+    this.x2,
+    this.y2,
+  });
+
+  factory DetectedItem.fromJson(Map<String, dynamic> json) {
+    return DetectedItem(
+      id: json['id'] ?? 0,
+      foodName: json['foodName'] ?? 'Unknown',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
+      x1: (json['x1'] as num?)?.toDouble(),
+      y1: (json['y1'] as num?)?.toDouble(),
+      x2: (json['x2'] as num?)?.toDouble(),
+      y2: (json['y2'] as num?)?.toDouble(),
     );
   }
 }

@@ -135,7 +135,9 @@ class FoodDetectionService {
     if (!serverStatus.isAvailable) {
       throw FoodDetectionException(
         'Server tidak tersedia: ${serverStatus.message}\n'
-        'Pastikan server berjalan di $_baseUrl'
+        'Pastikan server berjalan di $_baseUrl',
+        category: 'server',
+        statusCode: serverStatus.statusCode,
       );
     }
     
@@ -177,27 +179,29 @@ class FoodDetectionService {
       } on SocketException catch (e) {
         lastException = FoodDetectionException(
           'Network error (attempt $attempt/$_maxRetries): Tidak dapat terhubung ke server.\n'
-          'Periksa koneksi internet dan server.'
+          'Periksa koneksi internet dan server.',
+          category: 'network',
         );
         print('Connection failed on attempt $attempt: $e');
       } on TimeoutException catch (e) {
         lastException = FoodDetectionException(
           'Timeout (attempt $attempt/$_maxRetries): Server membutuhkan waktu lebih lama.\n'
-          'AI mungkin sedang memproses request lain atau model sedang loading.'
+          'AI mungkin sedang memproses request lain atau model sedang loading.',
+          category: 'timeout',
         );
         print('Timeout on attempt $attempt: $e');
       } on FoodDetectionException catch (e) {
         // Don't retry for authentication or validation errors
-        if (e.message.contains('401') || 
-            e.message.contains('invalid') || 
-            e.message.contains('expired') ||
-            e.message.contains('413')) {
+        if (e.isAuthError || e.isClientError) {
           rethrow;
         }
         lastException = e;
         print('Detection error on attempt $attempt: $e');
       } catch (e) {
-        lastException = FoodDetectionException('Unexpected error: $e');
+        lastException = FoodDetectionException(
+          'Unexpected error: $e',
+          category: 'unknown',
+        );
         print('Unexpected error on attempt $attempt: $e');
       }
       
@@ -210,14 +214,20 @@ class FoodDetectionService {
     
     // All attempts failed
     onProgressUpdate?.call(0.0);
-    throw lastException ?? FoodDetectionException('All detection attempts failed');
+    throw lastException ?? FoodDetectionException(
+      'All detection attempts failed',
+      category: 'retry_exhausted',
+    );
   }
 
   /// Process and optimize image before sending
   Future<String> _processImage(String imagePath, Function(String)? onStatusUpdate) async {
     final file = File(imagePath);
     if (!await file.exists()) {
-      throw FoodDetectionException('File gambar tidak ditemukan: $imagePath');
+      throw FoodDetectionException(
+        'File gambar tidak ditemukan: $imagePath',
+        category: 'file_not_found',
+      );
     }
     
     final fileSizeKB = await file.length() / 1024;
@@ -304,7 +314,12 @@ class FoodDetectionService {
       
       print('Response status: ${response.statusCode}');
       print('Response headers: ${response.headers}');
-      print('Response body preview: ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}...');
+      
+      // Safe preview of response body
+      final bodyPreview = response.body.length > 300 
+        ? '${response.body.substring(0, 300)}...' 
+        : response.body;
+      print('Response body preview: $bodyPreview');
       
       return _handleResponse(response);
       
@@ -317,7 +332,7 @@ class FoodDetectionService {
   // Start progress timer for long-running operations
   void _startProgressTimer(Function(String)? onStatusUpdate) {
     int seconds = 0;
-    _progressTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+    _progressTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       seconds += 10;
       if (seconds <= 60) {
         onStatusUpdate?.call('AI is processing... (${seconds}s)');
@@ -335,7 +350,8 @@ class FoodDetectionService {
     _progressTimer = null;
   }
 
- // Enhanced response handler with better error messages
+  /// Enhanced response handler with better error messages
+  /// Enhanced response handler with better error messages
 FoodDetectionResult _handleResponse(http.Response response) {
   // Handle success responses (2xx range)
   if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -343,7 +359,7 @@ FoodDetectionResult _handleResponse(http.Response response) {
       final jsonData = json.decode(response.body);
       
       // Handle different response formats
-      if (jsonData.containsKey('total_calorie') && jsonData.containsKey('items')) {
+      if (jsonData.containsKey('total_calorie') || jsonData.containsKey('items')) {
         return FoodDetectionResult.fromJson(jsonData);
       }
       else if (jsonData.containsKey('scan') && jsonData.containsKey('scanItems')) {
@@ -354,12 +370,28 @@ FoodDetectionResult _handleResponse(http.Response response) {
       }
       else {
         print('Unknown response format: ${jsonData.keys}');
-        throw FoodDetectionException('Format response tidak dikenali. Server mungkin menggunakan format API yang berbeda.');
+        throw FoodDetectionException(
+          'Format response tidak dikenali. Server mungkin menggunakan format API yang berbeda.',
+          category: 'response_format',
+          statusCode: response.statusCode,
+        );
       }
-    } catch (e) {
+    } on FormatException catch (e) {
       print('JSON decode error: $e');
       print('Raw response: ${response.body}');
-      throw FoodDetectionException('Format response dari server tidak valid: $e');
+      throw FoodDetectionException(
+        'Format response dari server tidak valid: $e',
+        category: 'json_decode',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      print('Unexpected error parsing response: $e');
+      print('Raw response: ${response.body}');
+      throw FoodDetectionException(
+        'Error parsing server response: $e',
+        category: 'json_decode',
+        statusCode: response.statusCode,
+      );
     }
   } 
   else if (response.statusCode == 400) {
@@ -370,83 +402,144 @@ FoodDetectionResult _handleResponse(http.Response response) {
       if (errorMessage.toString().toLowerCase().contains('timeout')) {
         throw FoodDetectionException(
           'Server timeout: AI membutuhkan waktu lebih lama untuk memproses gambar.\n'
-          'Coba lagi dalam beberapa saat atau gunakan gambar yang lebih kecil.'
+          'Coba lagi dalam beberapa saat atau gunakan gambar yang lebih kecil.',
+          category: 'timeout',
+          statusCode: 400,
         );
       } else {
-        throw FoodDetectionException('Request error: $errorMessage');
+        throw FoodDetectionException(
+          'Request error: $errorMessage',
+          category: 'bad_request',
+          statusCode: 400,
+        );
       }
+    } on FormatException catch (e) {
+      print('Error parsing 400 response: $e');
+      throw FoodDetectionException(
+        'Server timeout atau gambar tidak dapat diproses. Coba lagi.',
+        category: 'bad_request',
+        statusCode: 400,
+      );
     } catch (e) {
-      throw FoodDetectionException('Server timeout atau gambar tidak dapat diproses. Coba lagi.');
+      print('Unexpected error handling 400 response: $e');
+      throw FoodDetectionException(
+        'Server timeout atau gambar tidak dapat diproses. Coba lagi.',
+        category: 'bad_request',
+        statusCode: 400,
+      );
     }
   }
   else if (response.statusCode == 401) {
     clearToken(); // Clear invalid token
-    throw FoodDetectionException('Token tidak valid atau sudah expired. Silakan login kembali.');
+    throw FoodDetectionException(
+      'Token tidak valid atau sudah expired. Silakan login kembali.',
+      category: 'auth',
+      statusCode: 401,
+    );
   }
   else if (response.statusCode == 413) {
-    throw FoodDetectionException('File gambar terlalu besar (max ${_maxImageSizeKB}KB). Coba kompres gambar terlebih dahulu.');
+    throw FoodDetectionException(
+      'File gambar terlalu besar (max ${_maxImageSizeKB}KB). Coba kompres gambar terlebih dahulu.',
+      category: 'file_too_large',
+      statusCode: 413,
+    );
   }
   else if (response.statusCode == 429) {
-    throw FoodDetectionException('Terlalu banyak request. Tunggu 30 detik sebelum mencoba lagi.');
+    throw FoodDetectionException(
+      'Terlalu banyak request. Tunggu 30 detik sebelum mencoba lagi.',
+      category: 'rate_limit',
+      statusCode: 429,
+    );
   }
   else if (response.statusCode == 503) {
-    throw FoodDetectionException('Server sedang overload atau maintenance. Coba lagi dalam beberapa menit.');
+    throw FoodDetectionException(
+      'Server sedang overload atau maintenance. Coba lagi dalam beberapa menit.',
+      category: 'service_unavailable',
+      statusCode: 503,
+    );
   }
   else if (response.statusCode >= 500) {
-    throw FoodDetectionException('Server error (${response.statusCode}). Server mungkin sedang restart atau mengalami masalah.');
+    throw FoodDetectionException(
+      'Server error (${response.statusCode}). Server mungkin sedang restart atau mengalami masalah.',
+      category: 'server_error',
+      statusCode: response.statusCode,
+    );
   }
   else {
     try {
       final errorData = json.decode(response.body);
       throw FoodDetectionException(
-        errorData['message'] ?? errorData['error'] ?? 'Server error: ${response.statusCode}'
+        errorData['message'] ?? errorData['error'] ?? 'Server error: ${response.statusCode}',
+        category: 'client_error',
+        statusCode: response.statusCode,
+      );
+    } on FormatException catch (e) {
+      print('Error parsing error response: $e');
+      throw FoodDetectionException(
+        'Server error: ${response.statusCode}',
+        category: 'client_error',
+        statusCode: response.statusCode,
       );
     } catch (e) {
-      throw FoodDetectionException('Server error: ${response.statusCode}');
+      print('Unexpected error handling error response: $e');
+      throw FoodDetectionException(
+        'Server error: ${response.statusCode}',
+        category: 'client_error',
+        statusCode: response.statusCode,
+      );
     }
   }
 }
 
   /// Parse response dari Express.js format
   FoodDetectionResult _parseExpressResponse(Map<String, dynamic> jsonData) {
-    final scan = jsonData['scan'];
-    final scanItems = jsonData['scanItems'] as List<dynamic>?;
+    final scan = jsonData['scan'] as Map<String, dynamic>? ?? {};
+    final scanItems = jsonData['scanItems'] as List<dynamic>? ?? [];
     
     return FoodDetectionResult(
       totalCalorie: (scan['calories'] ?? 0).round(),
-      items: scanItems?.map((item) => DetectedFood(
-        name: item['foodName']?.toString() ?? '',
-        confidence: (item['confidence'] ?? 0.0).toDouble(),
-        boundingBox: BoundingBox(
-          x1: (item['x1'] ?? 0.0).toDouble(),
-          y1: (item['y1'] ?? 0.0).toDouble(),
-          x2: (item['x2'] ?? 0.0).toDouble(),
-          y2: (item['y2'] ?? 0.0).toDouble(),
-        ),
-      )).toList() ?? [],
+      scanId: jsonData['scanId']?.toString() ?? scan['id']?.toString() ?? '',
+      items: scanItems.map((item) {
+        final itemMap = item as Map<String, dynamic>;
+        return DetectedFood(
+          name: itemMap['foodName']?.toString() ?? '',
+          confidence: (itemMap['confidence'] ?? 0.0).toDouble(),
+          boundingBox: BoundingBox(
+            x1: (itemMap['x1'] ?? 0.0).toDouble(),
+            y1: (itemMap['y1'] ?? 0.0).toDouble(),
+            x2: (itemMap['x2'] ?? 0.0).toDouble(),
+            y2: (itemMap['y2'] ?? 0.0).toDouble(),
+          ),
+        );
+      }).toList(),
     );
   }
 
-  // Parse response dari Python/Flask format
+  /// Parse response dari Python/Flask format
   FoodDetectionResult _parsePythonResponse(Map<String, dynamic> jsonData) {
     final foods = jsonData['foods'] as List<dynamic>? ?? [];
     
     return FoodDetectionResult(
       totalCalorie: (jsonData['calories'] ?? 0).round(),
-      items: foods.map((item) => DetectedFood(
-        name: item['name']?.toString() ?? '',
-        confidence: (item['confidence'] ?? 0.0).toDouble(),
-        boundingBox: BoundingBox(
-          x1: (item['bbox']?[0] ?? 0.0).toDouble(),
-          y1: (item['bbox']?[1] ?? 0.0).toDouble(),
-          x2: (item['bbox']?[2] ?? 0.0).toDouble(),
-          y2: (item['bbox']?[3] ?? 0.0).toDouble(),
-        ),
-      )).toList(),
+      scanId: jsonData['scanId']?.toString() ?? jsonData['id']?.toString() ?? '',
+      items: foods.map((item) {
+        final itemMap = item as Map<String, dynamic>;
+        final bbox = itemMap['bbox'] as List<dynamic>? ?? [0, 0, 0, 0];
+        return DetectedFood(
+          name: itemMap['name']?.toString() ?? '',
+          confidence: (itemMap['confidence'] ?? 0.0).toDouble(),
+          boundingBox: BoundingBox(
+            x1: (bbox.isNotEmpty ? bbox[0] : 0.0).toDouble(),
+            y1: (bbox.length > 1 ? bbox[1] : 0.0).toDouble(),
+            x2: (bbox.length > 2 ? bbox[2] : 0.0).toDouble(),
+            y2: (bbox.length > 3 ? bbox[3] : 0.0).toDouble(),
+          ),
+        );
+      }).toList(),
     );
   }
 
-  // Get user-friendly error message
+  /// Get user-friendly error message
   String _getErrorMessage(dynamic error) {
     if (error is SocketException) {
       return 'Tidak dapat terhubung ke server. Periksa koneksi internet dan pastikan server berjalan di $_baseUrl';
@@ -467,7 +560,7 @@ FoodDetectionResult _handleResponse(http.Response response) {
     return status.isAvailable;
   }
 
-  // Enhanced connection test with comprehensive diagnostics
+  /// Enhanced connection test with comprehensive diagnostics
   Future<Map<String, dynamic>> testConnection() async {
     try {
       final stopwatch = Stopwatch()..start();
@@ -506,13 +599,13 @@ FoodDetectionResult _handleResponse(http.Response response) {
     }
   }
 
-  // Check if there's a valid token
+  /// Check if there's a valid token
   Future<bool> hasValidToken() async {
     final token = await _getAccessToken();
     return token != null && token.isNotEmpty && token.length > 10;
   }
 
-  // Debug SharedPreferences with more detailed info
+  /// Debug SharedPreferences with more detailed info
   Future<Map<String, dynamic>> debugSharedPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -545,14 +638,14 @@ FoodDetectionResult _handleResponse(http.Response response) {
     }
   }
 
-  // Cleanup resources
+  /// Cleanup resources
   void dispose() {
     _stopProgressTimer();
     _cachedToken = null;
   }
 }
 
-// Server status information with enhanced details
+/// Server status information with enhanced details
 class ServerStatus {
   final bool isAvailable;
   final int responseTime; 
@@ -579,18 +672,21 @@ class ServerStatus {
 /// Model untuk hasil deteksi makanan
 class FoodDetectionResult {
   final int totalCalorie;
+  final String scanId;
   final List<DetectedFood> items;
 
   FoodDetectionResult({
     required this.totalCalorie,
     required this.items,
+    this.scanId = '', // Made optional with default
   });
 
   factory FoodDetectionResult.fromJson(Map<String, dynamic> json) {
     return FoodDetectionResult(
       totalCalorie: (json['total_calorie'] ?? json['calories'] ?? 0).round(),
+      scanId: json['scanId']?.toString() ?? json['id']?.toString() ?? '',
       items: (json['items'] as List<dynamic>?)
-          ?.map((item) => DetectedFood.fromJson(item))
+          ?.map((item) => DetectedFood.fromJson(item as Map<String, dynamic>))
           .toList() ?? [],
     );
   }
@@ -598,6 +694,7 @@ class FoodDetectionResult {
   Map<String, dynamic> toJson() {
     return {
       'total_calorie': totalCalorie,
+      'scanId': scanId,
       'items': items.map((item) => item.toJson()).toList(),
     };
   }
@@ -608,7 +705,7 @@ class FoodDetectionResult {
     items.map((e) => e.confidence).reduce((a, b) => a + b) / items.length;
 }
 
-// Model untuk makanan yang terdeteksi
+/// Model untuk makanan yang terdeteksi
 class DetectedFood {
   final String name;
   final double confidence;
@@ -650,7 +747,7 @@ class DetectedFood {
   bool get isLowConfidence => confidence < 0.5;
 }
 
-// Model untuk bounding box
+/// Model untuk bounding box
 class BoundingBox {
   final double x1;
   final double y1;
@@ -671,7 +768,7 @@ class BoundingBox {
   double get centerY => (y1 + y2) / 2;
 }
 
-// Exception khusus untuk Food Detection dengan kategori error
+/// Exception khusus untuk Food Detection dengan kategori error
 class FoodDetectionException implements Exception {
   final String message;
   final String? category;
@@ -685,5 +782,5 @@ class FoodDetectionException implements Exception {
   bool get isNetworkError => category == 'network' || message.contains('connection') || message.contains('timeout');
   bool get isServerError => statusCode != null && statusCode! >= 500;
   bool get isClientError => statusCode != null && statusCode! >= 400 && statusCode! < 500;
-  bool get isAuthError => statusCode == 401 || message.contains('token') || message.contains('auth');
+  bool get isAuthError => statusCode == 401 || category == 'auth' || message.contains('token') || message.contains('auth');
 }
