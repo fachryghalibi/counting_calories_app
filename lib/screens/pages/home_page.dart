@@ -8,8 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   final String userName;
-  
-  const MainNavigationWrapper({Key? key, this.userName = 'User'}) : super(key: key);
+
+  const MainNavigationWrapper({Key? key, this.userName = 'User'})
+      : super(key: key);
 
   @override
   _MainNavigationWrapperState createState() => _MainNavigationWrapperState();
@@ -62,7 +63,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastUpdate = prefs.getString('last_profile_update');
-      
+
       if (lastUpdate != null && lastUpdate != _lastUpdateTimestamp) {
         _lastUpdateTimestamp = lastUpdate;
         await _loadUserData();
@@ -76,20 +77,20 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   Future<void> _loadUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       if (mounted) {
         setState(() {
           // Get the current user ID first
           final userId = prefs.getInt('id') ?? 0;
-          
+
           // Load basic user information with multiple fallbacks
-          _userName = prefs.getString('full_name') ?? 
-                     prefs.getString('username_$userId') ?? 
-                     prefs.getString('username') ?? 
-                     widget.userName;
-          
+          _userName = prefs.getString('full_name') ??
+              prefs.getString('username_$userId') ??
+              prefs.getString('username') ??
+              widget.userName;
+
           _userEmail = prefs.getString('email') ?? '';
-          
+
           // Load additional user data
           _userDateOfBirth = prefs.getString('dateOfBirth') ?? '';
           _userGender = prefs.getString('gender') ?? '';
@@ -98,15 +99,15 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           _userActivityLevel = prefs.getInt('activityLevel') ?? 0;
           _userActive = prefs.getBool('active') ?? false;
           _userProfileImage = prefs.getString('profileImage') ?? '';
-          
+
           // Load session data
           _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
           _completedOnboarding = prefs.getBool('completedOnboarding') ?? false;
           _authToken = prefs.getString('auth_token') ?? '';
-          
+
           // Assign to class variables
           _userId = userId;
-          
+
           // Update userName for backward compatibility
           userName = _userName;
         });
@@ -116,7 +117,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       print('🔍 === LOADING ALL USER DATA ===');
       print('🔍 User ID: ${prefs.getInt('id')}');
       print('🔍 Full Name: ${prefs.getString('full_name')}');
-      print('🔍 Username: ${prefs.getString('username_${prefs.getInt('id')}')}');
+      print(
+          '🔍 Username: ${prefs.getString('username_${prefs.getInt('id')}')}');
       print('🔍 Username (fallback): ${prefs.getString('username')}');
       print('🔍 Final Username: $_userName');
       print('🔍 Email: ${prefs.getString('email')}');
@@ -130,8 +132,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       print('🔍 Profile Image: ${prefs.getString('profileImage')}');
       print('🔍 Is Logged In: ${prefs.getBool('isLoggedIn')}');
       print('🔍 Completed Onboarding: ${prefs.getBool('completedOnboarding')}');
-      print('🔍 Auth Token: ${prefs.getString('auth_token') != null ? '[TOKEN EXISTS]' : 'null'}');
-      print('🔍 Last Profile Update: ${prefs.getString('last_profile_update')}');
+      print(
+          '🔍 Auth Token: ${prefs.getString('auth_token') != null ? '[TOKEN EXISTS]' : 'null'}');
+      print(
+          '🔍 Last Profile Update: ${prefs.getString('last_profile_update')}');
       print('🔍 All Available Keys: ${prefs.getKeys().toList()}');
       print('🔍 ===============================');
     } catch (e) {
@@ -143,7 +147,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     setState(() {
       currentIndex = index;
     });
-    
+
     // Refresh data ketika kembali ke homepage
     if (index == 0) {
       Future.delayed(Duration(milliseconds: 100), () {
@@ -181,21 +185,973 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     );
   }
 
-  Widget _buildHomePage() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+  Widget _buildBMICard() {
+    String bmiValue = _calculateBMI();
+    Color bmiColor = _getBMIColor();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: bmiColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: bmiColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.assessment,
+                  color: bmiColor,
+                  size: 20,
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Body Mass Index (BMI)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      bmiValue,
+                      style: TextStyle(
+                        color: bmiColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildBMIScale(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBMIScale() {
+    double currentBMI = 0;
+    if (_userHeight > 0 && _userWeight > 0) {
+      double heightInMeters = _userHeight / 100;
+      currentBMI = _userWeight / (heightInMeters * heightInMeters);
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.blue,
+                      Colors.green,
+                      Colors.orange,
+                      Colors.red,
+                    ],
+                    stops: [0.25, 0.5, 0.75, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('18.5',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            Text('25', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            Text('30', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            Text('35+',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Under',
+                style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+            Text('Normal',
+                style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+            Text('Over',
+                style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+            Text('Obese',
+                style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthMetrics() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Color(0xFF2D2D44),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
-          const SizedBox(height: 30),
-          _buildTodaySection(),
-          const SizedBox(height: 20),
-          _buildCaloriesCard(),
-          const SizedBox(height: 20),
-          _buildFoodSuggestionCard(),
-          const SizedBox(height: 30),
-          _buildDailyLogsSection(),
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.favorite,
+                  color: Colors.green[300],
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 16),
+              Text(
+                'Health Metrics',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+          _buildBMICard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFF2D2D44),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildQuickActions() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Color(0xFF2D2D44),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.flash_on,
+                  color: Colors.purple[300],
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 16),
+              Text(
+                'Quick Actions',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  'Scan Food',
+                  Icons.camera_alt,
+                  Colors.green,
+                  () => setState(() => currentIndex = 1),
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton(
+                  'View History',
+                  Icons.history,
+                  Colors.blue,
+                  () => setState(() => currentIndex = 2),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+      String label, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+            SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionInsights() {
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF2D2D44),
+          Color(0xFF1A1A2E),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 8,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.lightbulb_outline,
+                color: Colors.amber[300],
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nutrition Insights',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Personalized tips based on your profile',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+        
+        // Main insight card
+        _buildMainInsightCard(),
+        
+        SizedBox(height: 16),
+        
+        // Secondary insights
+        Row(
+          children: [
+            Expanded(
+              child: _buildSecondaryInsightCard(
+                _getHydrationInsight(),
+                Icons.water_drop,
+                Colors.blue,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildSecondaryInsightCard(
+                _getActivityInsight(),
+                Icons.directions_run,
+                Colors.green,
+              ),
+            ),
+          ],
+        ),
+        
+        SizedBox(height: 16),
+        
+        // Food recommendations
+        _buildFoodRecommendations(),
+      ],
+    ),
+  );
+}
+
+Widget _buildMainInsightCard() {
+  Map<String, dynamic> insight = _getMainInsight();
+  
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: insight['color'].withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: insight['color'].withOpacity(0.3),
+        width: 1,
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              insight['icon'],
+              color: insight['color'],
+              size: 20,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                insight['title'],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Text(
+          insight['description'],
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        if (insight['tip'] != null) ...[
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tips_and_updates,
+                  color: Colors.amber[300],
+                  size: 16,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    insight['tip'],
+                    style: TextStyle(
+                      color: Colors.amber[300],
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _buildSecondaryInsightCard(Map<String, dynamic> insight, IconData icon, Color color) {
+  return Container(
+    padding: EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.05),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: color.withOpacity(0.3),
+        width: 1,
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 18,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                insight['title'],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Text(
+          insight['message'],
+          style: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 12,
+            height: 1.3,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildFoodRecommendations() {
+  List<Map<String, dynamic>> recommendations = _getFoodRecommendations();
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Icon(
+            Icons.restaurant,
+            color: Colors.orange[300],
+            size: 18,
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Food Recommendations',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 12),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: recommendations.map((food) {
+            return Container(
+              margin: EdgeInsets.only(right: 12),
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.orange.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    food['emoji'],
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    food['name'],
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    food['benefit'],
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    ],
+  );
+}
+
+// Helper methods for generating insights
+Map<String, dynamic> _getMainInsight() {
+  double bmi = 0;
+  if (_userHeight > 0 && _userWeight > 0) {
+    double heightInMeters = _userHeight / 100;
+    bmi = _userWeight / (heightInMeters * heightInMeters);
+  }
+  
+  String age = _calculateAge();
+  int ageNumber = 0;
+  if (age.contains('years')) {
+    ageNumber = int.tryParse(age.split(' ')[0]) ?? 0;
+  }
+  
+  // BMI-based insights
+  if (bmi < 18.5) {
+    return {
+      'icon': Icons.trending_up,
+      'color': Colors.blue,
+      'title': 'Focus on Weight Gain',
+      'description': 'Your BMI indicates you might benefit from healthy weight gain. Consider increasing your calorie intake with nutrient-dense foods.',
+      'tip': 'Add healthy fats like avocados, nuts, and olive oil to your meals.',
+    };
+  } else if (bmi >= 30) {
+    return {
+      'icon': Icons.trending_down,
+      'color': Colors.red,
+      'title': 'Weight Management Focus',
+      'description': 'A balanced calorie deficit with regular exercise can help you reach a healthier weight range.',
+      'tip': 'Aim for 300-500 calorie deficit per day for sustainable weight loss.',
+    };
+  } else if (bmi >= 25) {
+    return {
+      'icon': Icons.balance,
+      'color': Colors.orange,
+      'title': 'Maintain Balanced Nutrition',
+      'description': 'Focus on portion control and choosing nutrient-dense foods to maintain a healthy weight.',
+      'tip': 'Fill half your plate with vegetables and fruits at each meal.',
+    };
+  }
+  
+  // Age-based insights
+  if (ageNumber >= 50) {
+    return {
+      'icon': Icons.health_and_safety,
+      'color': Colors.green,
+      'title': 'Bone Health Priority',
+      'description': 'At your age, calcium and vitamin D are crucial for bone health. Include dairy, leafy greens, and fortified foods.',
+      'tip': 'Aim for 1200mg calcium and 800 IU vitamin D daily.',
+    };
+  } else if (ageNumber >= 30) {
+    return {
+      'icon': Icons.favorite,
+      'color': Colors.red,
+      'title': 'Heart Health Focus',
+      'description': 'Prioritize heart-healthy foods like fish, nuts, and whole grains to maintain cardiovascular health.',
+      'tip': 'Include omega-3 rich foods like salmon twice a week.',
+    };
+  }
+  
+  // Gender-based insights
+  if (_userGender.toLowerCase() == 'female') {
+    return {
+      'icon': Icons.local_florist,
+      'color': Colors.pink,
+      'title': 'Iron & Folate Focus',
+      'description': 'Women need more iron and folate. Include lean meats, beans, and leafy greens in your diet.',
+      'tip': 'Pair iron-rich foods with vitamin C to enhance absorption.',
+    };
+  }
+  
+  // Default insight
+  return {
+    'icon': Icons.psychology,
+    'color': Colors.purple,
+    'title': 'Balanced Nutrition',
+    'description': 'Focus on a balanced diet with variety from all food groups for optimal health.',
+    'tip': 'Aim for 5 servings of fruits and vegetables daily.',
+  };
+}
+
+Map<String, dynamic> _getHydrationInsight() {
+  double waterNeeded = _userWeight * 35; // ml per kg body weight
+  
+  return {
+    'title': 'Hydration Goal',
+    'message': _userWeight > 0 
+        ? 'Drink ${(waterNeeded / 1000).toStringAsFixed(1)}L water daily'
+        : 'Stay hydrated with 8 glasses of water daily',
+  };
+}
+
+Map<String, dynamic> _getActivityInsight() {
+  String activityLevel = _getActivityLevelText();
+  
+  Map<String, String> recommendations = {
+    'Sedentary': 'Add 30 min walking daily',
+    'Lightly Active': 'Great! Consider strength training',
+    'Moderately Active': 'Perfect balance maintained',
+    'Very Active': 'Ensure proper recovery',
+    'Extra Active': 'Monitor for overtraining',
+  };
+  
+  return {
+    'title': 'Activity Level',
+    'message': recommendations[activityLevel] ?? 'Stay active for better health',
+  };
+}
+
+List<Map<String, dynamic>> _getFoodRecommendations() {
+  double bmi = 0;
+  if (_userHeight > 0 && _userWeight > 0) {
+    double heightInMeters = _userHeight / 100;
+    bmi = _userWeight / (heightInMeters * heightInMeters);
+  }
+  
+  if (bmi < 18.5) {
+    return [
+      {'emoji': '🥑', 'name': 'Avocado', 'benefit': 'Healthy fats'},
+      {'emoji': '🥜', 'name': 'Nuts', 'benefit': 'Protein & calories'},
+      {'emoji': '🍌', 'name': 'Banana', 'benefit': 'Quick energy'},
+      {'emoji': '🥛', 'name': 'Milk', 'benefit': 'Protein & calcium'},
+    ];
+  } else if (bmi >= 25) {
+    return [
+      {'emoji': '🥬', 'name': 'Leafy Greens', 'benefit': 'Low calorie'},
+      {'emoji': '🐟', 'name': 'Fish', 'benefit': 'Lean protein'},
+      {'emoji': '🫐', 'name': 'Berries', 'benefit': 'Antioxidants'},
+      {'emoji': '🥒', 'name': 'Cucumber', 'benefit': 'Hydrating'},
+    ];
+  }
+  
+  // Default healthy recommendations
+  return [
+    {'emoji': '🥕', 'name': 'Carrots', 'benefit': 'Beta-carotene'},
+    {'emoji': '🥚', 'name': 'Eggs', 'benefit': 'Complete protein'},
+    {'emoji': '🍎', 'name': 'Apple', 'benefit': 'Fiber'},
+    {'emoji': '🥦', 'name': 'Broccoli', 'benefit': 'Vitamins'},
+  ];
+}
+
+  Widget _buildHomePage() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 30),
+            _buildProfileOverview(),
+            const SizedBox(height: 20),
+            _buildHealthMetrics(),
+            const SizedBox(height: 20),
+            _buildNutritionInsights(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOverview() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2D2D44),
+            Color(0xFF1A1A2E),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.person_outline,
+                  color: Colors.blue[300],
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Profile Overview',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Your health information at a glance',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildProfileInfoCard(
+                  'Personal Info',
+                  [
+                    _buildInfoRow(
+                        'Gender',
+                        _userGender.isNotEmpty ? _userGender : 'Not specified',
+                        Icons.person),
+                    _buildInfoRow('Age', _calculateAge(), Icons.cake),
+                    _buildInfoRow('Activity', _getActivityLevelText(),
+                        Icons.directions_run),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: _buildProfileInfoCard(
+                  'Physical Stats',
+                  [
+                    _buildInfoRow(
+                        'Height',
+                        _userHeight > 0
+                            ? '${_userHeight.toStringAsFixed(0)} cm'
+                            : 'Not specified',
+                        Icons.height),
+                    _buildInfoRow(
+                        'Weight',
+                        _userWeight > 0
+                            ? '${_userWeight.toStringAsFixed(1)} kg'
+                            : 'Not specified',
+                        Icons.monitor_weight),
+                    _buildInfoRow('BMI', _calculateBMI(), Icons.assessment),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: Colors.blue[300],
+            size: 16,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileInfoCard(String title, List<Widget> children) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 16),
+          ...children,
         ],
       ),
     );
@@ -259,9 +1215,82 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     );
   }
 
+  String _calculateAge() {
+    if (_userDateOfBirth.isEmpty) return 'Not specified';
+
+    try {
+      DateTime birthDate = DateTime.parse(_userDateOfBirth);
+      DateTime now = DateTime.now();
+      int age = now.year - birthDate.year;
+
+      if (now.month < birthDate.month ||
+          (now.month == birthDate.month && now.day < birthDate.day)) {
+        age--;
+      }
+
+      return '$age years old';
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  String _getActivityLevelText() {
+    switch (_userActivityLevel) {
+      case 1:
+        return 'Sedentary';
+      case 2:
+        return 'Lightly Active';
+      case 3:
+        return 'Moderately Active';
+      case 4:
+        return 'Very Active';
+      case 5:
+        return 'Extra Active';
+      default:
+        return 'Not specified';
+    }
+  }
+
+  String _calculateBMI() {
+    if (_userHeight <= 0 || _userWeight <= 0) return 'Not available';
+
+    double heightInMeters = _userHeight / 100;
+    double bmi = _userWeight / (heightInMeters * heightInMeters);
+
+    String status;
+    if (bmi < 18.5) {
+      status = 'Underweight';
+    } else if (bmi < 25) {
+      status = 'Normal';
+    } else if (bmi < 30) {
+      status = 'Overweight';
+    } else {
+      status = 'Obese';
+    }
+
+    return '${bmi.toStringAsFixed(1)} ($status)';
+  }
+
+  Color _getBMIColor() {
+    if (_userHeight <= 0 || _userWeight <= 0) return Colors.grey;
+
+    double heightInMeters = _userHeight / 100;
+    double bmi = _userWeight / (heightInMeters * heightInMeters);
+
+    if (bmi < 18.5) {
+      return Colors.blue;
+    } else if (bmi < 25) {
+      return Colors.green;
+    } else if (bmi < 30) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    
+
     if (hour >= 5 && hour < 12) {
       return 'Good Morning';
     } else if (hour >= 12 && hour < 17) {
@@ -275,7 +1304,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   String _getGreetingEmoji() {
     final hour = DateTime.now().hour;
-    
+
     if (hour >= 5 && hour < 12) {
       return '☀️';
     } else if (hour >= 12 && hour < 17) {
@@ -285,323 +1314,5 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     } else {
       return '🌙';
     }
-  }
-
-  Widget _buildTodaySection() {
-    return Text(
-      'Today',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  Widget _buildCaloriesCard() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Color(0xFF2D2D44),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Calories',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 16),
-                _buildCalorieItem('Base Goal', '2,200', Icons.flag_outlined),
-                SizedBox(height: 12),
-                _buildCalorieItem('Consumed', '1,007', Icons.local_fire_department_outlined),
-              ],
-            ),
-          ),
-          SizedBox(width: 20),
-          _buildCalorieCircle(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalorieItem(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 16,
-          ),
-        ),
-        SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCalorieCircle() {
-    return Container(
-      width: 100,
-      height: 100,
-      child: Stack(
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            child: CircularProgressIndicator(
-              value: 0.45,
-              strokeWidth: 8,
-              backgroundColor: Colors.grey[700],
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '1,193',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Remaining',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFoodSuggestionCard() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Color(0xFF2D2D44),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Food Suggestion',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'For Dinner',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
-              ),
-              Text(
-                'Beef Salad',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          Spacer(),
-          Column(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                '+800 kcal',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDailyLogsSection() {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Daily Logs',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 16),
-          Expanded(
-            child: ListView(
-              children: [
-                _buildMealSection('Breakfast'),
-                _buildFoodItem('Nasi Goreng', '7:30 AM', '+343 kcal'),
-                SizedBox(height: 16),
-                _buildMealSection('Lunch'),
-                _buildFoodItem('Nasi Padang', '12:45 PM', '+664 kcal'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealSection(String mealType) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            mealType,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFoodItem(String foodName, String time, String calories) {
-    return Container(
-      margin: EdgeInsets.only(left: 20, bottom: 8),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Color(0xFF2D2D44),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  time,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  foodName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            calories,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderPage(String pageName) {
-    return Center(
-      child: Text(
-        '$pageName - Coming Soon',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
   }
 }
